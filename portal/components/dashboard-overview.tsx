@@ -40,9 +40,23 @@ export function DashboardOverview({
       setLocations(payload.locations ?? [])
     }
 
-    refresh()
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
 
-    const timer = window.setInterval(refresh, 15000)
+    refreshIfVisible()
+
+    const timer = window.setInterval(refreshIfVisible, 30000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refresh()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     const channel = supabase.channel('dashboard-live-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'worksheets' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.officer' }, refresh)
@@ -52,6 +66,7 @@ export function DashboardOverview({
 
     return () => {
       window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       supabase.removeChannel(channel)
     }
   }, [supabase])

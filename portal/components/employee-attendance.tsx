@@ -26,13 +26,24 @@ export function EmployeeAttendance({ employeeId, initialOpen, initialHistory }: 
       setHistory(rows)
       setOpenShift(rows.find(row => !row.check_out) ?? null)
     }
-    const refreshTimer = window.setInterval(refreshAttendance, 5000)
+    const refreshIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshAttendance()
+      }
+    }
+    const refreshTimer = window.setInterval(refreshIfVisible, 20000)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshAttendance()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     const channel = supabase.channel(`attendance-${employeeId}`).on('postgres_changes', { event: '*', schema: 'public', table: 'attendance', filter: `employee_id=eq.${employeeId}` }, payload => {
       const row = payload.new as Attendance
       if (payload.eventType === 'INSERT') { setHistory(rows => [row, ...rows.filter(item => item.id !== row.id)]); setOpenShift(row.check_out ? null : row) }
       if (payload.eventType === 'UPDATE') { setHistory(rows => rows.map(item => item.id === row.id ? row : item)); setOpenShift(row.check_out ? null : row) }
     }).subscribe()
-    return () => { window.clearInterval(timer); window.clearInterval(refreshTimer); supabase.removeChannel(channel) }
+    return () => { window.clearInterval(timer); window.clearInterval(refreshTimer); document.removeEventListener('visibilitychange', handleVisibilityChange); supabase.removeChannel(channel) }
   }, [employeeId, supabase])
 
   async function checkIn() {
