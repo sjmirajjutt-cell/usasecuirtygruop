@@ -7,10 +7,11 @@ export type Database = {
       invoices: { Row: Invoice; Insert: InvoiceInsert; Update: Partial<InvoiceInsert>; Relationships: [] }
       clients: { Row: Client; Insert: ClientInsert; Update: Partial<ClientInsert>; Relationships: [] }
       attendance: { Row: Attendance; Insert: AttendanceInsert; Update: Partial<AttendanceInsert>; Relationships: [] }
+      password_reset_requests: { Row: PasswordResetRequest; Insert: PasswordResetRequestInsert; Update: Partial<PasswordResetRequestInsert>; Relationships: [] }
     }
     Views: { [_ in never]: never }
     Functions: { [_ in never]: never }
-    Enums: { profile_role: 'admin' | 'officer'; invoice_status: 'pending' | 'paid' }
+    Enums: { profile_role: 'admin' | 'officer'; invoice_status: 'pending' | 'paid'; password_reset_status: 'pending' | 'approved' | 'rejected' }
     CompositeTypes: { [_ in never]: never }
   }
 }
@@ -27,6 +28,8 @@ export type Client = { id: string; name: string; address_line_1: string; address
 export type ClientInsert = Omit<Client, 'id' | 'created_at'> & { id?: string; created_at?: string }
 export type Attendance = { id: string; employee_id: string; check_in: string; check_out: string | null; total_hours: number | null; notes: string | null; created_at: string }
 export type AttendanceInsert = Omit<Attendance, 'id' | 'total_hours' | 'created_at'> & { id?: string; created_at?: string }
+export type PasswordResetRequest = { id: string; employee_id: string; requested_by_name: string; email: string; reason: string | null; status: 'pending' | 'approved' | 'rejected'; note: string | null; reviewer_id: string | null; reviewed_at: string | null; created_at: string }
+export type PasswordResetRequestInsert = Omit<PasswordResetRequest, 'id' | 'created_at' | 'reviewed_at'> & { id?: string; created_at?: string; reviewed_at?: string | null }
 
 export type WorksheetWithRelations = Worksheet & {
   officer: Pick<Profile, 'full_name'> | null
