@@ -7,14 +7,18 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sendingReset, setSendingReset] = useState(false)
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
     setError('')
+    setNotice('')
     const supabase = createClient()
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    const normalizedEmail = email.trim().toLowerCase()
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
     if (signInError) setError(signInError.message)
     else {
       const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', data.user.id).single()
@@ -24,6 +28,24 @@ export function LoginForm() {
       } else window.location.assign(profile?.role === 'officer' ? '/employee' : '/dashboard')
     }
     setLoading(false)
+  }
+
+  async function sendResetLink() {
+    const normalizedEmail = email.trim().toLowerCase()
+    setError('')
+    setNotice('')
+    if (!normalizedEmail) {
+      setError('Pehle apna email enter karein.')
+      return
+    }
+
+    setSendingReset(true)
+    const { error: resetError } = await createClient().auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: 'https://usasecuritygruop.vercel.app/reset-password'
+    })
+    setSendingReset(false)
+    if (resetError) setError(resetError.message)
+    else setNotice('Password reset link aapke email par bhej diya gaya hai.')
   }
 
   return (
@@ -64,6 +86,11 @@ export function LoginForm() {
       </div>
 
       {error && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {notice && <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
+
+      <button type="button" onClick={() => void sendResetLink()} disabled={sendingReset} className="mt-4 text-left text-sm font-semibold text-[#4b98cf] disabled:opacity-60">
+        {sendingReset ? 'Reset link bhej rahe hain...' : 'Forgot password? Reset link bhejein'}
+      </button>
 
       <button
         disabled={loading}
