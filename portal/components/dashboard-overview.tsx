@@ -59,6 +59,7 @@ export function DashboardOverview({
 
     const channel = supabase.channel('dashboard-live-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'worksheets' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: 'role=eq.officer' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invoices' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'work_locations' }, refresh)
