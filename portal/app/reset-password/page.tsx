@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -11,6 +11,54 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+    let active = true
+
+    async function establishRecoverySession() {
+      const url = new URL(window.location.href)
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+      const code = url.searchParams.get('code')
+      const accessToken = hash.get('access_token')
+      const refreshToken = hash.get('refresh_token')
+      const recoveryError = hash.get('error_description') || url.searchParams.get('error_description')
+
+      if (recoveryError) {
+        if (active) setError(decodeURIComponent(recoveryError.replace(/\+/g, ' ')))
+        return
+      }
+
+      let authError: { message: string } | null = null
+      if (code) {
+        const result = await supabase.auth.exchangeCodeForSession(code)
+        authError = result.error
+      } else if (accessToken && refreshToken) {
+        const result = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        authError = result.error
+      }
+
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (!active) return
+      if (authError || sessionError || !session) {
+        setError(authError?.message || sessionError?.message || 'This reset link is invalid or expired. Please request a new link.')
+        return
+      }
+      setSessionReady(true)
+      window.history.replaceState({}, document.title, '/reset-password')
+    }
+
+    void establishRecoverySession()
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (active && (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') && session) setSessionReady(true)
+    })
+
+    return () => {
+      active = false
+      listener.subscription.unsubscribe()
+    }
+  }, [])
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -22,6 +70,11 @@ export default function ResetPasswordPage() {
     }
     if (password !== confirmation) {
       setError('Passwords do not match.')
+      return
+    }
+
+    if (!sessionReady) {
+      setError('Recovery session is not ready. Please open the reset link again.')
       return
     }
 
@@ -53,8 +106,8 @@ export default function ResetPasswordPage() {
           </label>
           {error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {message && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
-          <button disabled={saving} type="submit" className="w-full rounded-lg bg-[#12263f] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
-            {saving ? 'Saving...' : 'Change password'}
+          <button disabled={saving || !sessionReady} type="submit" className="w-full rounded-lg bg-[#12263f] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
+            {saving ? 'Saving...' : sessionReady ? 'Change password' : 'Preparing secure session...'}
           </button>
         </form>
       </section>
