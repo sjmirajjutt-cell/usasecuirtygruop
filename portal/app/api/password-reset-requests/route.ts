@@ -60,12 +60,30 @@ export async function PATCH(request: Request) {
 
   const body = await request.json()
   const id = String(body.id ?? '')
-  const status = String(body.status ?? '').trim()
+  const status = String(body.status ?? '').trim().toLowerCase()
   const note = String(body.note ?? '').trim()
 
   if (!id || !['approved', 'rejected'].includes(status)) return NextResponse.json({ error: 'Invalid reset request update.' }, { status: 400 })
 
   const admin = createAdminClient()
+  const { data: requestRecord } = await admin.from('password_reset_requests').select('*').eq('id', id).single()
+  if (!requestRecord) return NextResponse.json({ error: 'Reset request not found.' }, { status: 404 })
+
+  let resetLink: string | null = null
+  if (status === 'approved') {
+    const { data: authUser } = await admin.auth.admin.getUserById(requestRecord.employee_id)
+    const resetEmail = authUser.user?.email || requestRecord.email
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: resetEmail,
+      options: { redirectTo: 'https://usasecuritygruop.vercel.app/reset-password' }
+    })
+    if (linkError || !linkData.properties?.action_link) {
+      return NextResponse.json({ error: linkError?.message ?? 'Unable to create reset link.' }, { status: 400 })
+    }
+    resetLink = linkData.properties.action_link
+  }
+
   const { data, error } = await admin.from('password_reset_requests').update({
     status,
     note: note || null,
@@ -75,15 +93,5 @@ export async function PATCH(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-  if (status === 'approved') {
-    const { data: target } = await admin.from('profiles').select('full_name, role').eq('id', data.employee_id).single()
-    if (target) {
-      await admin.auth.admin.generateLink({
-        type: 'recovery',
-        email: data.email
-      })
-    }
-  }
-
-  return NextResponse.json({ request: data })
+  return NextResponse.json({ request: data, resetLink })
 }

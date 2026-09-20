@@ -1,4 +1,8 @@
-create type if not exists public.password_reset_status as enum ('pending', 'approved', 'rejected');
+do $$
+begin
+  create type public.password_reset_status as enum ('pending', 'approved', 'rejected');
+exception when duplicate_object then null;
+end $$;
 
 create table if not exists public.password_reset_requests (
   id uuid primary key default gen_random_uuid(),
@@ -34,4 +38,16 @@ for all to authenticated
 using (public.is_admin())
 with check (public.is_admin());
 
-alter publication supabase_realtime add table public.password_reset_requests;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'password_reset_requests'
+  ) then
+    alter publication supabase_realtime add table public.password_reset_requests;
+  end if;
+exception when undefined_object then null;
+end $$;

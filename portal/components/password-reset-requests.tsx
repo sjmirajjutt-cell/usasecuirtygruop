@@ -8,7 +8,7 @@ export type PasswordResetRequestItem = {
   requested_by_name: string
   email: string
   reason: string | null
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'pending' | 'approved' | 'rejected' | 'PENDING' | 'APPROVED' | 'REJECTED'
   note: string | null
   reviewer_id: string | null
   reviewed_at: string | null
@@ -22,6 +22,8 @@ export function PasswordResetRequests() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [resetLinks, setResetLinks] = useState<Record<string, string>>({})
+  const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -60,9 +62,23 @@ export function PasswordResetRequests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status, note })
     })
+    const payload = await response.json()
     if (response.ok) {
-      await load()
+      if (payload.resetLink) setResetLinks(current => ({ ...current, [id]: payload.resetLink }))
+      setItems(current => current.map(item => item.id === id ? { ...item, status, note } : item))
+      setMessage(status === 'approved' ? 'Request approved. Reset link generated.' : 'Request rejected.')
+    } else {
+      setError(payload.error ?? 'Unable to update reset request.')
     }
+  }
+
+  async function copyResetLink(id: string) {
+    const link = resetLinks[id]
+    if (!link) return
+    await navigator.clipboard.writeText(link)
+    setCopiedLinkId(id)
+    setMessage('Reset link copied to clipboard.')
+    window.setTimeout(() => setCopiedLinkId(current => current === id ? null : current), 2200)
   }
 
   const pendingCount = items.filter(item => item.status === 'pending').length
@@ -98,24 +114,41 @@ export function PasswordResetRequests() {
 
         <div className="space-y-3 p-5">
           {loading ? <p className="text-sm text-slate-500">Loading requests...</p> : items.length === 0 ? <p className="text-sm text-slate-500">No password reset requests yet.</p> : items.map(item => (
-            <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            (() => {
+              const normalizedStatus = String(item.status).toLowerCase()
+              const isApproved = normalizedStatus === 'approved'
+              const isPending = normalizedStatus === 'pending'
+              return <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-semibold text-[#12263f]">{item.requested_by_name}</p>
                   <p className="text-xs text-slate-500">{item.email}</p>
                 </div>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${item.status === 'pending' ? 'bg-amber-100 text-amber-700' : item.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                  {item.status}
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${isPending ? 'bg-amber-100 text-amber-700' : isApproved ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                  {normalizedStatus}
                 </span>
               </div>
               <p className="mt-3 text-sm text-slate-600">{item.reason || 'No reason provided.'}</p>
               {item.note && <p className="mt-2 text-xs text-slate-500">Admin note: {item.note}</p>}
+              {resetLinks[item.id] && (
+                <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                  <p className="text-xs font-semibold text-emerald-800">Reset link created. Send this link to the employee:</p>
+                  <div className="mt-2 flex gap-2">
+                    <input readOnly value={resetLinks[item.id]} className="min-w-0 flex-1 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-xs text-slate-600" />
+                    <button onClick={() => void copyResetLink(item.id)} className="rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">{copiedLinkId === item.id ? 'Copied' : 'Copy'}</button>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <button onClick={() => updateStatus(item.id, 'approved', 'Approved by admin')} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Approve</button>
-                <button onClick={() => updateStatus(item.id, 'rejected', 'Rejected by admin')} className="rounded-md bg-red-600 px-3 py-2 text-xs font-bold text-white">Reject</button>
+                {isApproved && !resetLinks[item.id] && <button onClick={() => void updateStatus(item.id, 'approved', 'Reset link regenerated by admin')} className="rounded-md bg-[#4b98cf] px-3 py-2 text-xs font-bold text-white">Generate reset link</button>}
+                {isPending && <>
+                  <button onClick={() => updateStatus(item.id, 'approved', 'Approved by admin')} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white">Approve</button>
+                  <button onClick={() => updateStatus(item.id, 'rejected', 'Rejected by admin')} className="rounded-md bg-red-600 px-3 py-2 text-xs font-bold text-white">Reject</button>
+                </>}
               </div>
             </div>
+            })()
           ))}
         </div>
       </section>
