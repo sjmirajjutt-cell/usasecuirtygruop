@@ -49,12 +49,13 @@ export function EmployeeAttendance({ employeeId, initialOpen, initialHistory }: 
   async function checkIn() {
     setLoading(true); setError('')
     try {
-      const response = await fetch('/api/attendance', { method: 'POST' })
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }))
+      const response = await fetch('/api/attendance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy }) })
       const result = await response.json()
       const data = result.attendance as Attendance | undefined
       if (!response.ok) setError(result.error?.includes('duplicate') ? 'You already have an active shift.' : result.error ?? 'Unable to check in.')
       else if (data) { setOpenShift(data); setHistory(rows => [data, ...rows]) }
-    } catch { setError('Unable to reach the attendance service. Please refresh and try again.') }
+    } catch { setError('Location permission required hai. Browser location allow karke dobara check-in karein.') }
     setLoading(false)
   }
 

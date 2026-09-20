@@ -61,8 +61,16 @@ create table if not exists public.work_locations (
   location_name text not null,
   address text not null,
   client_name text not null,
+  latitude double precision,
+  longitude double precision,
+  allowed_radius_meters integer not null default 150 check (allowed_radius_meters between 25 and 5000),
   created_at timestamptz not null default now()
 );
+
+alter table public.work_locations add column if not exists latitude double precision;
+alter table public.work_locations add column if not exists longitude double precision;
+alter table public.work_locations add column if not exists allowed_radius_meters integer not null default 150;
+alter table public.profiles add column if not exists assigned_location_id uuid references public.work_locations(id) on delete set null;
 
 create table if not exists public.worksheets (
   id uuid primary key default gen_random_uuid(),
@@ -113,6 +121,12 @@ create table if not exists public.attendance (
     else extract(epoch from (check_out - check_in)) / 3600
     end
   ) stored,
+  assigned_location_id uuid references public.work_locations(id) on delete set null,
+  check_in_latitude double precision,
+  check_in_longitude double precision,
+  check_in_accuracy_meters double precision,
+  distance_from_location_meters double precision,
+  location_status text not null default 'not_verified' check (location_status in ('matched', 'outside_radius', 'not_verified')),
   notes text,
   created_at timestamptz not null default now(),
   constraint attendance_valid_times check (check_out is null or check_out >= check_in)
