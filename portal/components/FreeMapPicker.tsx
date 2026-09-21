@@ -11,6 +11,8 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   const [position, setPosition] = useState({ lat: 26.1224, lng: -80.1373 })
   const [searchQuery, setSearchQuery] = useState('')
   const [address, setAddress] = useState('')
+  const [manualLat, setManualLat] = useState('')
+  const [manualLng, setManualLng] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState('')
 
@@ -84,11 +86,12 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   async function selectPosition(lat: number, lng: number, fallbackAddress?: string, locationName?: string) {
     setPosition({ lat, lng })
 
-    const resolvedLocationName = locationName || getFallbackLocationName(fallbackAddress)
+    const normalizedFallbackAddress = fallbackAddress && /^https?:\/\//i.test(fallbackAddress) ? undefined : fallbackAddress
+    const resolvedLocationName = locationName || getFallbackLocationName(normalizedFallbackAddress)
 
-    if (fallbackAddress) {
-      setAddress(fallbackAddress)
-      onLocationSelect({ lat, lng, address: fallbackAddress, locationName: resolvedLocationName })
+    if (normalizedFallbackAddress) {
+      setAddress(normalizedFallbackAddress)
+      onLocationSelect({ lat, lng, address: normalizedFallbackAddress, locationName: resolvedLocationName })
       return
     }
 
@@ -115,22 +118,52 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     try {
       const googleLocation = await resolveGoogleMapsLink(searchQuery.trim())
       if (googleLocation) {
-        await selectPosition(googleLocation.lat, googleLocation.lng, searchQuery.trim(), googleLocation.locationName)
+        setSearchQuery('')
+        await selectPosition(googleLocation.lat, googleLocation.lng, undefined, googleLocation.locationName)
         return
       }
 
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(searchQuery)}`)
       const results = await response.json()
       if (!results.length) {
-        setError('Location nahi mili. Address ya city dobara search karein.')
+        setError('Location nahi mili. Address ya city dobara search karein. Agar exact Google Maps link hai to coordinates manual bhi enter kar sakte hain.')
         return
       }
       await selectPosition(Number(results[0].lat), Number(results[0].lon), results[0].display_name)
     } catch {
-      setError('Location search nahi ho saki. Internet connection check karein.')
+      setError('Location search nahi ho saki. Internet connection check karein. Coordinates manual entry ya current location use karo.')
     } finally {
       setIsSearching(false)
     }
+  }
+
+  async function useCurrentLocation() {
+    setError('')
+    if (!navigator.geolocation) {
+      setError('Browser geolocation available nahi hai. Manual latitude/longitude enter karo.')
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude
+        const lng = position.coords.longitude
+        await selectPosition(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`, 'Current Location')
+      },
+      () => setError('Current location access reject ho gaya. Manual coordinates enter karo.')
+    )
+  }
+
+  function applyManualCoordinates() {
+    const lat = Number(manualLat)
+    const lng = Number(manualLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setError('Latitude aur longitude valid numbers hone chahiye.')
+      return
+    }
+
+    setError('')
+    void selectPosition(lat, lng, `${lat.toFixed(6)}, ${lng.toFixed(6)}`, `Manual Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`)
   }
 
   useEffect(() => {
@@ -145,8 +178,18 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
         <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Address ya Google Maps link paste karein" className="min-w-0 flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" />
         <button type="submit" disabled={isSearching} className="rounded-md bg-[#4b98cf] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSearching ? 'Searching...' : 'Search'}</button>
       </form>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <button type="button" onClick={useCurrentLocation} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700">Use my location</button>
+        <input value={manualLat} onChange={event => setManualLat(event.target.value)} placeholder="Latitude" className="rounded-md border border-slate-200 px-3 py-2 text-sm" />
+        <div className="flex gap-2">
+          <input value={manualLng} onChange={event => setManualLng(event.target.value)} placeholder="Longitude" className="min-w-0 flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" />
+          <button type="button" onClick={applyManualCoordinates} className="rounded-md bg-slate-700 px-3 py-2 text-sm font-bold text-white">Set</button>
+        </div>
+      </div>
+
       {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {address && <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><strong>Selected:</strong> {address}<br /><span className="text-slate-400">Google Maps link paste karne par marker exact coordinates par set hoga.</span></p>}
+      {address && <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><strong>Selected:</strong> {address}<br /><span className="text-slate-400">Google Maps link paste karne par marker exact coordinates par set hoga, warna current location ya manual coordinates use kar sakte hain.</span></p>}
       <div className="h-[300px] overflow-hidden rounded-lg border border-slate-200">
         <LeafletMapView position={position} onMarkerMove={next => { void selectPosition(next.lat, next.lng) }} />
       </div>
