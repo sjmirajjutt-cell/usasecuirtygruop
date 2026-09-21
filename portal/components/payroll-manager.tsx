@@ -35,6 +35,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   const [periodStart, setPeriodStart] = useState(initialPeriod.start)
   const [periodEnd, setPeriodEnd] = useState(initialPeriod.end)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
+  const activePeriod = useMemo(() => getInitialPayrollPeriod(safePayments, today), [safePayments, today])
   const [attendanceRows, setAttendanceRows] = useState(safeAttendance)
   const [paymentRows, setPaymentRows] = useState(safePayments)
   const [now, setNow] = useState(Date.now())
@@ -55,11 +56,10 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
         if (payrollResponse.ok) {
           const nextPayments = (await payrollResponse.json()).payments ?? []
           setPaymentRows(nextPayments)
-          const latestPayment = nextPayments[0]
-          if (latestPayment && periodStart === latestPayment.period_start && periodEnd === latestPayment.period_end) {
-            const next = nextPayrollPeriod(latestPayment.period_end)
-            setPeriodStart(next.start)
-            setPeriodEnd(next.end)
+          const nextActivePeriod = getInitialPayrollPeriod(nextPayments, new Date())
+          if (periodStart !== nextActivePeriod.start || periodEnd !== nextActivePeriod.end) {
+            setPeriodStart(nextActivePeriod.start)
+            setPeriodEnd(nextActivePeriod.end)
           }
         }
       } catch {
@@ -70,6 +70,13 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     const timer = window.setInterval(refresh, 10000)
     return () => window.clearInterval(timer)
   }, [periodEnd, periodStart])
+
+  useEffect(() => {
+    if (periodStart !== activePeriod.start || periodEnd !== activePeriod.end) {
+      setPeriodStart(activePeriod.start)
+      setPeriodEnd(activePeriod.end)
+    }
+  }, [activePeriod, periodEnd, periodStart])
 
   const rows = useMemo<PayrollRow[]>(() => safeEmployees.map(employee => {
     const shifts = attendanceRows.filter(row => {
@@ -82,12 +89,15 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), payment }
   }), [safeEmployees, attendanceRows, paymentRows, periodStart, periodEnd, now])
 
-  const filteredRows = rows.filter(row => {
+  const liveRows = rows.filter(row => !row.payment)
+  const paidRows = paymentRows.filter(payment => payment.period_start === periodStart && payment.period_end === periodEnd)
+
+  const filteredRows = liveRows.filter(row => {
     const text = `${row.employee.full_name} ${row.employee.employee_id ?? ''}`.toLowerCase()
-    return (!filters.search || text.includes(filters.search.toLowerCase())) && (!filters.status || filters.status === (row.payment ? 'paid' : 'live')) && (!filters.from || periodStart >= filters.from) && (!filters.to || periodEnd <= filters.to)
+    return (!filters.search || text.includes(filters.search.toLowerCase())) && (!filters.status || filters.status === 'live') && (!filters.from || periodStart >= filters.from) && (!filters.to || periodEnd <= filters.to)
   })
-  const liveTotal = filteredRows.filter(row => !row.payment).reduce((total, row) => total + row.amount, 0)
-  const paidTotal = filteredRows.filter(row => row.payment).reduce((total, row) => total + row.amount, 0)
+  const liveTotal = filteredRows.reduce((total, row) => total + row.amount, 0)
+  const paidTotal = paidRows.reduce((total, payment) => total + Number(payment.gross_amount || 0), 0)
 
   function setFilter(key: keyof Filters, value: string) { setFilters(current => ({ ...current, [key]: value })) }
 
