@@ -19,12 +19,19 @@ function nextPayrollPeriod(periodEnd: string) {
   return { start: dateValue(start), end: dateValue(new Date(start.getFullYear(), start.getMonth() + 1, 0)) }
 }
 
+function getInitialPayrollPeriod(payments: Payment[], today = new Date()) {
+  if (!payments.length) {
+    return { start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)), end: dateValue(today) }
+  }
+  return nextPayrollPeriod(payments[0].period_end)
+}
+
 export function PayrollManager({ employees, attendance, payments }: { employees: Profile[]; attendance: Attendance[]; payments: Payment[] }) {
   const safeEmployees = Array.isArray(employees) ? employees : []
   const safeAttendance = Array.isArray(attendance) ? attendance : []
   const safePayments = Array.isArray(payments) ? payments : []
   const today = new Date()
-  const initialPeriod = safePayments[0] ? nextPayrollPeriod(safePayments[0].period_end) : { start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)), end: dateValue(today) }
+  const initialPeriod = getInitialPayrollPeriod(safePayments, today)
   const [periodStart, setPeriodStart] = useState(initialPeriod.start)
   const [periodEnd, setPeriodEnd] = useState(initialPeriod.end)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
@@ -45,7 +52,16 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       try {
         const [attendanceResponse, payrollResponse] = await Promise.all([fetch('/api/attendance', { cache: 'no-store' }), fetch('/api/payroll', { cache: 'no-store' })])
         if (attendanceResponse.ok) setAttendanceRows((await attendanceResponse.json()).attendance ?? [])
-        if (payrollResponse.ok) setPaymentRows((await payrollResponse.json()).payments ?? [])
+        if (payrollResponse.ok) {
+          const nextPayments = (await payrollResponse.json()).payments ?? []
+          setPaymentRows(nextPayments)
+          const latestPayment = nextPayments[0]
+          if (latestPayment && periodStart === latestPayment.period_start && periodEnd === latestPayment.period_end) {
+            const next = nextPayrollPeriod(latestPayment.period_end)
+            setPeriodStart(next.start)
+            setPeriodEnd(next.end)
+          }
+        }
       } catch {
         setError('Live payroll refresh is temporarily unavailable.')
       }
@@ -53,7 +69,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     void refresh()
     const timer = window.setInterval(refresh, 10000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [periodEnd, periodStart])
 
   const rows = useMemo<PayrollRow[]>(() => safeEmployees.map(employee => {
     const shifts = attendanceRows.filter(row => {
@@ -82,8 +98,8 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       const result = await response.json().catch(() => ({}))
       if (!response.ok) setError(result.error ?? 'Payroll could not be marked paid.')
       else {
-        setPaymentRows(current => [result.payment, ...current])
         const next = nextPayrollPeriod(periodEnd)
+        setPaymentRows(current => [result.payment, ...current])
         setPeriodStart(next.start); setPeriodEnd(next.end); setFilters(emptyFilters)
         setMessage(`Payroll marked paid for ${row.employee.full_name}. The next payroll period started automatically.`)
       }
