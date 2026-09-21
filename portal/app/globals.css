@@ -100,6 +100,8 @@ a { color: inherit; text-decoration: none; }
   .worksheet-report { gap: 12px !important; }
   .print-sheet { box-shadow: none !important; border: 0 !important; page-break-inside: avoid; }
   .dashboard-content .print-sheet table { min-width: 0 !important; }
+  .dashboard-content > .print-sheet .panel-heading > div:last-child { display: none !important; }
+  .dashboard-content > .print-sheet > .bg-slate-50 { display: none !important; }
   .print-report-heading { display: flex; justify-content: space-between; padding: 0 0 10px; color: #12263f; font-size: 12pt; font-weight: 700; }
   .print-sheet table { width: 100% !important; font-size: 9pt !important; }
   .print-sheet th, .print-sheet td { padding: 5px 7px !important; }
