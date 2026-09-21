@@ -57,6 +57,8 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     const trimmed = value.trim()
     if (!trimmed || !/^https?:\/\//i.test(trimmed)) return parseGoogleMapsUrl(trimmed)
 
+    console.log('[MapPicker] Raw URL:', trimmed)
+
     try {
       const response = await fetch('/api/resolve-map-link', {
         method: 'POST',
@@ -64,15 +66,19 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
         body: JSON.stringify({ url: trimmed })
       })
       const result = await response.json()
+      console.log('[MapPicker] Resolved URL:', result?.url ?? trimmed)
       if (result?.url) {
         const resolved = parseGoogleMapsUrl(result.url)
+        console.log('[MapPicker] Resolved coordinates:', resolved)
         if (resolved) return resolved
       }
-    } catch {
-      // fallback below
+    } catch (error) {
+      console.error('[MapPicker] Resolve error:', error)
     }
 
-    return parseGoogleMapsUrl(trimmed)
+    const fallback = parseGoogleMapsUrl(trimmed)
+    console.log('[MapPicker] Fallback parse:', fallback)
+    return fallback
   }
 
   function getFallbackLocationName(value?: string) {
@@ -117,6 +123,7 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     setError('')
     try {
       const googleLocation = await resolveGoogleMapsLink(searchQuery.trim())
+      console.log('[MapPicker] Selected from search:', googleLocation)
       if (googleLocation) {
         setSearchQuery('')
         await selectPosition(googleLocation.lat, googleLocation.lng, undefined, googleLocation.locationName)
