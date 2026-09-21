@@ -35,11 +35,17 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
         return null
       }
 
-      const locationName = decodeURIComponent(url.pathname.match(/\/maps\/(?:search\/)?([^/@?]+)/)?.[1] ?? '')
-        .replace(/\+/g, ' ')
-        .replace(/-/g, ' ')
-        .trim()
-      return { lat: Number(coordinates[1]), lng: Number(coordinates[2]), locationName: locationName || undefined }
+      let locationName = ''
+      const pathNameMatch = url.pathname.match(/\/maps\/(?:place\/|search\/)?(?:@)?([^/@?]+)/i)
+      if (pathNameMatch?.[1]) locationName = decodeURIComponent(pathNameMatch[1]).replace(/\+/g, ' ').replace(/-/g, ' ')
+      else {
+        const queryName = url.searchParams.get('q') ?? url.searchParams.get('query')
+        if (queryName) locationName = decodeURIComponent(queryName).replace(/\+/g, ' ')
+      }
+
+      const lat = Number(coordinates[1])
+      const lng = Number(coordinates[2])
+      return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng, locationName: locationName.trim() || undefined } : null
     } catch {
       return null
     }
@@ -50,9 +56,16 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     if (!trimmed || !/^https?:\/\//i.test(trimmed)) return parseGoogleMapsUrl(trimmed)
 
     try {
-      const response = await fetch(trimmed, { redirect: 'follow', cache: 'no-store' })
-      const resolved = parseGoogleMapsUrl(response.url || trimmed)
-      if (resolved) return resolved
+      const response = await fetch('/api/resolve-map-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed })
+      })
+      const result = await response.json()
+      if (result?.url) {
+        const resolved = parseGoogleMapsUrl(result.url)
+        if (resolved) return resolved
+      }
     } catch {
       // fallback below
     }
