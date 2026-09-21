@@ -25,15 +25,20 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
     const nextLocationName = String(form.get('locationName') ?? '').trim() || selected.locationName || selected.address.split(',')[0].trim() || 'Work Location'
     if (nextLocationName) setLocationName(nextLocationName)
 
-    const response = await fetch('/api/locations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...Object.fromEntries(form), locationName: nextLocationName, latitude: selected.lat, longitude: selected.lng, address: selected.address })
-    })
-    const result = await response.json()
-    if (!response.ok) setError(result.error ?? 'Location save nahi ho saki.')
-    else { setLocations(current => [...current, result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage('Location save ho gayi. Ab guard assign karein.'); event.currentTarget.reset(); setLocationName(''); setSelected(null) }
-    setSaving(false)
+    try {
+      const response = await fetch('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...Object.fromEntries(form), locationName: nextLocationName, latitude: selected.lat, longitude: selected.lng, address: selected.address })
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) setError(result.error ?? `Location save nahi ho saki (${response.status}).`)
+      else { setLocations(current => [...current, result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage('Location save ho gayi. Ab guard assign karein.'); event.currentTarget.reset(); setLocationName(''); setSelected(null) }
+    } catch {
+      setError('Location save nahi ho saki. Login aur internet connection check karein.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function assignLocation(employeeId: string, locationId: string) {

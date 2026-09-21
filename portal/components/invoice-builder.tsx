@@ -37,12 +37,19 @@ export function InvoiceBuilder({ initialClients }: Props) {
   }
 
   async function saveClient(event: React.FormEvent) {
-    event.preventDefault(); setSavingClient(true); setMessage('')
-    const response = await fetch('/api/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(client) })
-    const result = await response.json()
-    if (!response.ok) setMessage(result.error ?? 'Unable to save client')
-    else { setClients(current => [...current, result.client].sort((a, b) => a.name.localeCompare(b.name))); setSelectedId(result.client.id); setShowClientForm(false); setMessage('Client saved. It is ready for future invoices.') }
-    setSavingClient(false)
+    event.preventDefault()
+    setSavingClient(true)
+    setMessage('')
+    try {
+      const response = await fetch('/api/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(client) })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) setMessage(result.error ?? `Unable to save client (${response.status})`)
+      else { setClients(current => [...current, result.client].sort((a, b) => a.name.localeCompare(b.name))); setSelectedId(result.client.id); setShowClientForm(false); setMessage('Client saved. It is ready for future invoices.') }
+    } catch {
+      setMessage('Client save nahi ho saki. Login aur internet connection check karein.')
+    } finally {
+      setSavingClient(false)
+    }
   }
 
   function updateItem(index: number, key: keyof LineItem, value: string) {
