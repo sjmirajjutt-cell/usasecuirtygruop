@@ -20,6 +20,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   const [periodStart, setPeriodStart] = useState(dateValue(new Date(today.getFullYear(), today.getMonth(), 1)))
   const [periodEnd, setPeriodEnd] = useState(dateValue(today))
   const [filters, setFilters] = useState<Filters>(emptyFilters)
+  const [attendanceRows, setAttendanceRows] = useState(attendance)
   const [paymentRows, setPaymentRows] = useState(payments)
   const [now, setNow] = useState(Date.now())
   const [message, setMessage] = useState('')
@@ -31,12 +32,23 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     return () => window.clearInterval(timer)
   }, [])
 
+  useEffect(() => {
+    const refresh = async () => {
+      const [attendanceResponse, payrollResponse] = await Promise.all([fetch('/api/attendance', { cache: 'no-store' }), fetch('/api/payroll', { cache: 'no-store' })])
+      if (attendanceResponse.ok) setAttendanceRows((await attendanceResponse.json()).attendance ?? [])
+      if (payrollResponse.ok) setPaymentRows((await payrollResponse.json()).payments ?? [])
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 10000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   const rows = useMemo<PayrollRow[]>(() => employees.map(employee => {
-    const shifts = attendance.filter(row => row.employee_id === employee.id && row.check_in.slice(0, 10) >= periodStart && row.check_in.slice(0, 10) <= periodEnd)
+    const shifts = attendanceRows.filter(row => row.employee_id === employee.id && row.check_in.slice(0, 10) >= periodStart && row.check_in.slice(0, 10) <= periodEnd)
     const hours = shifts.reduce((total, row) => total + Number(row.total_hours ?? Math.max(0, (now - new Date(row.check_in).getTime()) / 3600000)), 0)
     const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
     return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), payment }
-  }), [employees, attendance, paymentRows, periodStart, periodEnd, now])
+  }), [employees, attendanceRows, paymentRows, periodStart, periodEnd, now])
 
   const filteredRows = rows.filter(row => {
     const text = `${row.employee.full_name} ${row.employee.employee_id ?? ''}`.toLowerCase()
