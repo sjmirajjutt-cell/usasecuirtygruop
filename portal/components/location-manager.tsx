@@ -49,7 +49,8 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
     setSaving(true); setMessage(''); setError('')
     if (!selected) { setError('Search for or select a location on the map first.'); setSaving(false); return }
 
-    const form = new FormData(event.currentTarget)
+    const formElement = event.currentTarget
+    const form = new FormData(formElement)
     const nextLocationName = String(form.get('locationName') ?? '').trim() || selected.locationName || selected.address.split(',')[0].trim() || 'Work Location'
     if (nextLocationName) setLocationName(nextLocationName)
 
@@ -61,7 +62,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) setError(result.error ?? `Location could not be saved (${response.status}).`)
-      else { setLocations(current => [...current.filter(location => location.id !== result.location.id), result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage(editingLocationId ? 'Location updated.' : 'Location saved. You can now assign a guard.'); event.currentTarget.reset(); setLocationName(''); setAllowedRadius('150'); setSelectedClientId(''); setSelected(null); setEditingLocationId(null) }
+      else { setLocations(current => [...current.filter(location => location.id !== result.location.id), result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage(editingLocationId ? 'Location updated.' : 'Location saved. You can now assign a guard.'); formElement.reset(); setLocationName(''); setAllowedRadius('150'); setSelectedClientId(''); setSelected(null); setEditingLocationId(null) }
     } catch {
       setError('Location could not be saved. Check your login and internet connection.')
     } finally {
