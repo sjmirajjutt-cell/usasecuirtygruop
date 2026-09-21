@@ -42,3 +42,28 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   return NextResponse.json({ client: data })
 }
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin()
+  if ('response' in auth) return auth.response
+  const body = await request.json()
+  const id = String(body.id ?? '')
+  const name = String(body.name ?? '').trim()
+  const addressLine1 = String(body.addressLine1 ?? '').trim()
+  if (!id || !name || !addressLine1) return NextResponse.json({ error: 'Client id, name, and address are required.' }, { status: 400 })
+  const admin = createAdminClient()
+  const { data, error } = await admin.from('clients').update({ name, address_line_1: addressLine1, address_line_2: String(body.addressLine2 ?? '').trim() || null, phone: String(body.phone ?? '').trim() || null, email: String(body.email ?? '').trim() || null }).eq('id', id).select().single()
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ client: data })
+}
+
+export async function DELETE(request: Request) {
+  const auth = await requireAdmin()
+  if ('response' in auth) return auth.response
+  const id = new URL(request.url).searchParams.get('id')
+  if (!id) return NextResponse.json({ error: 'Client id is required.' }, { status: 400 })
+  const admin = createAdminClient()
+  const { error } = await admin.from('clients').delete().eq('id', id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ ok: true, id })
+}
