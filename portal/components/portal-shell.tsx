@@ -17,6 +17,7 @@ type PasswordResetRequestSummary = {
 const navigation = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/dashboard/attendance', label: 'Attendance', icon: 'schedule' },
+  { href: '/dashboard/payroll', label: 'Payroll', icon: 'payments' },
   { href: '/dashboard/worksheets', label: 'Worksheets', icon: 'assignment' },
   { href: '/dashboard/invoices', label: 'Invoices', icon: 'receipt' },
   { href: '/dashboard/clients', label: 'Clients', icon: 'business' },
