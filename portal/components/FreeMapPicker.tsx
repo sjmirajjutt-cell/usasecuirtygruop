@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 
-type LocationSelection = { lat: number; lng: number; address: string }
+type LocationSelection = { lat: number; lng: number; address: string; locationName?: string }
 
 const LeafletMapView = dynamic(() => import('./leaflet-map-view').then(module => module.LeafletMapView), { ssr: false })
 
@@ -14,11 +14,32 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState('')
 
-  async function selectPosition(lat: number, lng: number, fallbackAddress?: string) {
+  function parseGoogleMapsUrl(value: string) {
+    try {
+      const url = new URL(value)
+      const pathAndQuery = decodeURIComponent(`${url.pathname} ${url.search}`)
+      const coordinateMatches = [
+        pathAndQuery.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/),
+        pathAndQuery.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/),
+        pathAndQuery.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+      ]
+      const coordinates = coordinateMatches.find(match => match)
+      if (!coordinates) return null
+
+      const locationName = decodeURIComponent(url.pathname.match(/\/maps\/(?:search\/)?([^/@?]+)/)?.[1] ?? '')
+        .replace(/\+/g, ' ')
+        .trim()
+      return { lat: Number(coordinates[1]), lng: Number(coordinates[2]), locationName }
+    } catch {
+      return null
+    }
+  }
+
+  async function selectPosition(lat: number, lng: number, fallbackAddress?: string, locationName?: string) {
     setPosition({ lat, lng })
     if (fallbackAddress) {
       setAddress(fallbackAddress)
-      onLocationSelect({ lat, lng, address: fallbackAddress })
+      onLocationSelect({ lat, lng, address: fallbackAddress, locationName })
       return
     }
 
@@ -27,11 +48,11 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       const result = await response.json()
       const selectedAddress = result.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
       setAddress(selectedAddress)
-      onLocationSelect({ lat, lng, address: selectedAddress })
+      onLocationSelect({ lat, lng, address: selectedAddress, locationName })
     } catch {
       const selectedAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
       setAddress(selectedAddress)
-      onLocationSelect({ lat, lng, address: selectedAddress })
+      onLocationSelect({ lat, lng, address: selectedAddress, locationName })
     }
   }
 
@@ -41,6 +62,12 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     setIsSearching(true)
     setError('')
     try {
+      const googleLocation = parseGoogleMapsUrl(searchQuery.trim())
+      if (googleLocation) {
+        await selectPosition(googleLocation.lat, googleLocation.lng, searchQuery.trim(), googleLocation.locationName)
+        return
+      }
+
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(searchQuery)}`)
       const results = await response.json()
       if (!results.length) {
@@ -64,11 +91,11 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   return (
     <div className="space-y-3">
       <form onSubmit={handleSearch} className="flex gap-2">
-        <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search address or city" className="min-w-0 flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" />
+        <input value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Address ya Google Maps link paste karein" className="min-w-0 flex-1 rounded-md border border-slate-200 px-3 py-2 text-sm" />
         <button type="submit" disabled={isSearching} className="rounded-md bg-[#4b98cf] px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{isSearching ? 'Searching...' : 'Search'}</button>
       </form>
       {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {address && <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><strong>Selected:</strong> {address}</p>}
+      {address && <p className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"><strong>Selected:</strong> {address}<br /><span className="text-slate-400">Google Maps link paste karne par marker exact coordinates par set hoga.</span></p>}
       <div className="h-[300px] overflow-hidden rounded-lg border border-slate-200">
         <LeafletMapView position={position} onMarkerMove={next => { void selectPosition(next.lat, next.lng) }} />
       </div>

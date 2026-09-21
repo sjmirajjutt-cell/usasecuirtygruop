@@ -18,6 +18,7 @@ const navigation = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { href: '/dashboard/worksheets', label: 'Worksheets', icon: 'assignment' },
   { href: '/dashboard/invoices', label: 'Invoices', icon: 'receipt' },
+  { href: '/dashboard/locations', label: 'Locations', icon: 'location_on' },
   { href: '/dashboard/employees', label: 'Employees', icon: 'people' }
 ]
 

@@ -1,6 +1,7 @@
 alter table public.work_locations add column if not exists latitude double precision;
 alter table public.work_locations add column if not exists longitude double precision;
 alter table public.work_locations add column if not exists allowed_radius_meters integer not null default 150;
+alter table public.work_locations add column if not exists client_id uuid references public.clients(id) on delete set null;
 alter table public.profiles add column if not exists assigned_location_id uuid references public.work_locations(id) on delete set null;
 alter table public.attendance add column if not exists assigned_location_id uuid references public.work_locations(id) on delete set null;
 alter table public.attendance add column if not exists check_in_latitude double precision;

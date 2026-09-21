@@ -18,7 +18,7 @@ export type Database = {
 
 export type Profile = { id: string; full_name: string; role: 'admin' | 'officer'; pin_code: string | null; employee_id: string | null; phone: string | null; address: string | null; hourly_rate: number; is_active: boolean; assigned_location_id: string | null; created_at: string }
 export type ProfileInsert = Omit<Profile, 'created_at'> & { created_at?: string }
-export type WorkLocation = { id: string; location_name: string; address: string; client_name: string; latitude: number | null; longitude: number | null; allowed_radius_meters: number; created_at: string }
+export type WorkLocation = { id: string; location_name: string; address: string; client_id: string | null; client_name: string; latitude: number | null; longitude: number | null; allowed_radius_meters: number; created_at: string }
 export type WorkLocationInsert = Omit<WorkLocation, 'id' | 'created_at'> & { id?: string; created_at?: string }
 export type Worksheet = { id: string; officer_id: string; location_id: string; date: string; shift_hours: string; total_hours: number; hourly_rate: number; total_amount: number; created_at: string }
 export type WorksheetInsert = Omit<Worksheet, 'id' | 'total_amount' | 'created_at'> & { id?: string; created_at?: string }

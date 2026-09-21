@@ -1,15 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import type { Profile, WorkLocation } from '@/lib/supabase/database.types'
+import type { Client, Profile, WorkLocation } from '@/lib/supabase/database.types'
 import FreeMapPicker from '@/components/FreeMapPicker'
 
 type SelectedLocation = { lat: number; lng: number; address: string }
 
-export function LocationManager({ initialEmployees, initialLocations }: { initialEmployees: Profile[]; initialLocations: WorkLocation[] }) {
+export function LocationManager({ initialEmployees, initialLocations, initialClients }: { initialEmployees: Profile[]; initialLocations: WorkLocation[]; initialClients: Client[] }) {
   const [employees, setEmployees] = useState(initialEmployees)
   const [locations, setLocations] = useState(initialLocations)
   const [selected, setSelected] = useState<SelectedLocation | null>(null)
+  const [locationName, setLocationName] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -27,7 +28,7 @@ export function LocationManager({ initialEmployees, initialLocations }: { initia
     })
     const result = await response.json()
     if (!response.ok) setError(result.error ?? 'Location save nahi ho saki.')
-    else { setLocations(current => [...current, result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage('Location save ho gayi. Ab guard assign karein.'); event.currentTarget.reset(); setSelected(null) }
+    else { setLocations(current => [...current, result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage('Location save ho gayi. Ab guard assign karein.'); event.currentTarget.reset(); setLocationName(''); setSelected(null) }
     setSaving(false)
   }
 
@@ -47,10 +48,10 @@ export function LocationManager({ initialEmployees, initialLocations }: { initia
         <h3 className="mt-2 text-lg font-bold text-[#12263f]">Add a work location</h3>
         <p className="mt-1 text-sm text-slate-500">Search ya map marker drag karke exact site select karein.</p>
         <form onSubmit={createLocation} className="mt-5 space-y-4">
-          <label className="block text-xs font-bold text-slate-600">Location name<input name="locationName" required placeholder="Downtown Security Site" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
-          <label className="block text-xs font-bold text-slate-600">Client name<input name="clientName" required placeholder="Client or property name" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
+          <label className="block text-xs font-bold text-slate-600">Location name<input name="locationName" value={locationName} onChange={event => setLocationName(event.target.value)} required placeholder="Downtown Security Site" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
+          <label className="block text-xs font-bold text-slate-600">Saved client<select name="clientId" required className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal"><option value="">Choose a saved client</option>{initialClients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label>
           <label className="block text-xs font-bold text-slate-600">Allowed radius in meters<input name="allowedRadiusMeters" defaultValue="150" min="25" max="5000" type="number" required className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
-          <FreeMapPicker onLocationSelect={setSelected} />
+          <FreeMapPicker onLocationSelect={data => { setSelected(data); if (data.locationName) setLocationName(data.locationName) }} />
           {error && <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {message && <p className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
           <button disabled={saving || !selected} className="w-full rounded-md bg-[#12263f] px-4 py-3 text-sm font-bold text-white disabled:opacity-50">{saving ? 'Saving...' : 'Save location'}</button>

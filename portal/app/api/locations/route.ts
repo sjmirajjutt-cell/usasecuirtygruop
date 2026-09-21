@@ -26,11 +26,18 @@ export async function POST(request: Request) {
   const body = await request.json()
   const locationName = String(body.locationName ?? '').trim()
   const address = String(body.address ?? '').trim()
-  const clientName = String(body.clientName ?? '').trim()
+  const clientId = body.clientId ? String(body.clientId) : null
+  let clientName = String(body.clientName ?? '').trim()
   const latitude = Number(body.latitude)
   const longitude = Number(body.longitude)
   const allowedRadiusMeters = Number(body.allowedRadiusMeters ?? 150)
 
+  if (clientId) {
+    const admin = createAdminClient()
+    const { data: client } = await admin.from('clients').select('name').eq('id', clientId).single()
+    if (!client) return NextResponse.json({ error: 'Selected client nahi mila.' }, { status: 400 })
+    clientName = client.name
+  }
   if (!locationName || !address || !clientName || !Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(allowedRadiusMeters)) {
     return NextResponse.json({ error: 'Location name, address, client, map point, and radius are required.' }, { status: 400 })
   }
@@ -39,6 +46,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin.from('work_locations').insert({
     location_name: locationName,
     address,
+    client_id: clientId,
     client_name: clientName,
     latitude,
     longitude,

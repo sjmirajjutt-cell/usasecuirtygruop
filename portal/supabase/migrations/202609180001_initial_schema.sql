@@ -110,6 +110,7 @@ alter table public.invoices add column if not exists payment_terms text;
 alter table public.invoices add column if not exists service_dates text;
 alter table public.invoices add column if not exists line_items jsonb not null default '[]'::jsonb;
 alter table public.invoices add column if not exists sales_tax numeric(12,2) not null default 0;
+alter table public.work_locations add column if not exists client_id uuid references public.clients(id) on delete set null;
 
 create table if not exists public.attendance (
   id uuid primary key default gen_random_uuid(),
