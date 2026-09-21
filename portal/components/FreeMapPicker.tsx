@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic'
 
 type LocationSelection = { lat: number; lng: number; address: string; locationName?: string }
 
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
+
 const LeafletMapView = dynamic(() => import('./leaflet-map-view').then(module => module.LeafletMapView), { ssr: false })
 
 export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: (data: LocationSelection) => void }) {
