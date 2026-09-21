@@ -19,20 +19,45 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       const url = new URL(value)
       const pathAndQuery = decodeURIComponent(`${url.pathname} ${url.search}`)
       const coordinateMatches = [
-        pathAndQuery.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/),
+        pathAndQuery.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/),
         pathAndQuery.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/),
-        pathAndQuery.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
+        pathAndQuery.match(/[?&](?:q|query|ll|location)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/),
+        pathAndQuery.match(/[?&](?:q|query)=([^&]+)/i)
       ]
-      const coordinates = coordinateMatches.find(match => match)
-      if (!coordinates) return null
+
+      const coordinates = coordinateMatches.find(match => match && match[1] && match[2])
+      if (!coordinates) {
+        const queryFallback = pathAndQuery.match(/[?&](?:q|query)=([^&]+)/i)
+        if (queryFallback && queryFallback[1]?.includes(',')) {
+          const [lat, lng] = queryFallback[1].split(',').map(piece => Number(piece.trim()))
+          if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng }
+        }
+        return null
+      }
 
       const locationName = decodeURIComponent(url.pathname.match(/\/maps\/(?:search\/)?([^/@?]+)/)?.[1] ?? '')
         .replace(/\+/g, ' ')
+        .replace(/-/g, ' ')
         .trim()
-      return { lat: Number(coordinates[1]), lng: Number(coordinates[2]), locationName }
+      return { lat: Number(coordinates[1]), lng: Number(coordinates[2]), locationName: locationName || undefined }
     } catch {
       return null
     }
+  }
+
+  async function resolveGoogleMapsLink(value: string) {
+    const trimmed = value.trim()
+    if (!trimmed || !/^https?:\/\//i.test(trimmed)) return parseGoogleMapsUrl(trimmed)
+
+    try {
+      const response = await fetch(trimmed, { redirect: 'follow', cache: 'no-store' })
+      const resolved = parseGoogleMapsUrl(response.url || trimmed)
+      if (resolved) return resolved
+    } catch {
+      // fallback below
+    }
+
+    return parseGoogleMapsUrl(trimmed)
   }
 
   async function selectPosition(lat: number, lng: number, fallbackAddress?: string, locationName?: string) {
@@ -62,7 +87,7 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     setIsSearching(true)
     setError('')
     try {
-      const googleLocation = parseGoogleMapsUrl(searchQuery.trim())
+      const googleLocation = await resolveGoogleMapsLink(searchQuery.trim())
       if (googleLocation) {
         await selectPosition(googleLocation.lat, googleLocation.lng, searchQuery.trim(), googleLocation.locationName)
         return
