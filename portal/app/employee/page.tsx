@@ -2,18 +2,19 @@ import { PageHeader } from '@/components/portal-shell'
 import { EmployeeAttendance } from '@/components/employee-attendance'
 import { PasswordResetRequests } from '@/components/password-reset-requests'
 import { createClient } from '@/lib/supabase/server'
-import type { Attendance, Profile } from '@/lib/supabase/database.types'
+import type { Attendance, Profile, WorkLocation } from '@/lib/supabase/database.types'
 
 export default async function EmployeePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
   const [{ data: profile }, { data: attendance }] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, employee_id, phone, address, hourly_rate').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, full_name, employee_id, phone, address, hourly_rate, assigned_location_id').eq('id', user.id).single(),
     supabase.from('attendance').select('*').eq('employee_id', user.id).order('check_in', { ascending: false }).limit(30)
   ])
-  const typedProfile = profile as Pick<Profile, 'full_name' | 'employee_id' | 'phone' | 'address' | 'hourly_rate'> | null
+  const typedProfile = profile as Pick<Profile, 'full_name' | 'employee_id' | 'phone' | 'address' | 'hourly_rate' | 'assigned_location_id'> | null
   const rows = (attendance ?? []) as Attendance[]
   const openShift = rows.find(row => !row.check_out) ?? null
-  return <><PageHeader eyebrow="Employee portal" title={`Welcome, ${typedProfile?.full_name ?? 'Employee'}`} description="Track your live shift, attendance hours, and total payout." /><section className="dashboard-content"><div className="grid gap-5 lg:grid-cols-[.8fr_1.7fr]"><section className="panel p-6"><span className="section-kicker">Employee profile</span><h3 className="mt-2 text-xl font-bold text-[#12263f]">{typedProfile?.full_name}</h3><p className="mt-1 text-sm text-slate-500">Employee ID: {typedProfile?.employee_id ?? 'Not assigned'}</p><dl className="mt-6 space-y-4 text-sm"><div><dt className="text-slate-400">Phone</dt><dd className="mt-1 font-semibold text-[#12263f]">{typedProfile?.phone || 'Not provided'}</dd></div><div><dt className="text-slate-400">Address</dt><dd className="mt-1 font-semibold text-[#12263f]">{typedProfile?.address || 'Not provided'}</dd></div><div><dt className="text-slate-400">Hourly rate</dt><dd className="mt-1 font-semibold text-[#12263f]">${Number(typedProfile?.hourly_rate ?? 0).toFixed(2)}</dd></div></dl></section><EmployeeAttendance employeeId={user.id} hourlyRate={Number(typedProfile?.hourly_rate ?? 0)} initialOpen={openShift} initialHistory={rows} /></div><div className="mt-5"><PasswordResetRequests /></div></section></>
+  const assignedLocation = typedProfile?.assigned_location_id ? await supabase.from('work_locations').select('*').eq('id', typedProfile.assigned_location_id).single().then(result => result.data as WorkLocation | null) : null
+  return <><PageHeader eyebrow="Employee portal" title={`Welcome, ${typedProfile?.full_name ?? 'Employee'}`} description="Track your assigned location, live shift, attendance hours, and total payout." /><section className="dashboard-content"><div className="grid gap-5 lg:grid-cols-[.8fr_1.7fr]"><section className="panel p-6"><span className="section-kicker">Employee profile</span><h3 className="mt-2 text-xl font-bold text-[#12263f]">{typedProfile?.full_name}</h3><p className="mt-1 text-sm text-slate-500">Employee ID: {typedProfile?.employee_id ?? 'Not assigned'}</p><dl className="mt-6 space-y-4 text-sm"><div><dt className="text-slate-400">Phone</dt><dd className="mt-1 font-semibold text-[#12263f]">{typedProfile?.phone || 'Not provided'}</dd></div><div><dt className="text-slate-400">Address</dt><dd className="mt-1 font-semibold text-[#12263f]">{typedProfile?.address || 'Not provided'}</dd></div><div><dt className="text-slate-400">Hourly rate</dt><dd className="mt-1 font-semibold text-[#12263f]">${Number(typedProfile?.hourly_rate ?? 0).toFixed(2)}</dd></div></dl><div className="mt-6 rounded-md bg-slate-50 p-4"><span className="text-xs text-slate-400">Assigned work location</span><strong className="mt-1 block text-[#12263f]">{assignedLocation?.location_name ?? 'No location assigned'}</strong>{assignedLocation && <span className="mt-1 block text-sm text-slate-500">{assignedLocation.address}</span>}</div></section><EmployeeAttendance employeeId={user.id} hourlyRate={Number(typedProfile?.hourly_rate ?? 0)} initialOpen={openShift} initialHistory={rows} /></div><div className="mt-5"><PasswordResetRequests /></div></section></>
 }
