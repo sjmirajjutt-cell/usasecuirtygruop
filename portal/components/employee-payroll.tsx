@@ -7,12 +7,15 @@ type Payment = { id: string; period_start: string; period_end: string; total_hou
 export function EmployeePayroll({ hourlyRate }: { hourlyRate: number }) {
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const totalPaid = useMemo(() => payments.reduce((total, payment) => total + Number(payment.gross_amount || 0), 0), [payments])
 
   useEffect(() => {
     const load = async () => {
       const response = await fetch('/api/payroll', { cache: 'no-store' })
-      if (response.ok) setPayments((await response.json()).payments ?? [])
+      const result = await response.json().catch(() => ({}))
+      if (response.ok) setPayments(result.payments ?? [])
+      else setError(result.error ?? 'Payroll history could not be loaded.')
       setLoading(false)
     }
     void load()
