@@ -8,6 +8,13 @@ type PayrollRow = { employee: Profile; hours: number; amount: number; payment?: 
 
 function dateValue(date: Date) { return date.toISOString().slice(0, 10) }
 
+function nextPayrollPeriod(periodEnd: string) {
+  const nextStart = new Date(`${periodEnd}T00:00:00`)
+  nextStart.setDate(nextStart.getDate() + 1)
+  const nextEnd = new Date(nextStart.getFullYear(), nextStart.getMonth() + 1, 0)
+  return { start: dateValue(nextStart), end: dateValue(nextEnd) }
+}
+
 export function PayrollManager({ employees, attendance, payments }: { employees: Profile[]; attendance: Attendance[]; payments: Payment[] }) {
   const today = new Date()
   const [periodStart, setPeriodStart] = useState(dateValue(new Date(today.getFullYear(), today.getMonth(), 1)))
@@ -45,7 +52,14 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       const response = await fetch('/api/payroll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: row.employee.id, periodStart, periodEnd, totalHours: row.hours, grossAmount: row.amount }) })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) setError(result.error ?? 'Payroll could not be marked paid.')
-      else { setPaymentRows(current => [result.payment, ...current]); setMessage(`Payroll marked paid for ${row.employee.full_name}. It is now in Payroll History.`) }
+      else {
+        setPaymentRows(current => [result.payment, ...current])
+        const nextPeriod = nextPayrollPeriod(periodEnd)
+        setPeriodStart(nextPeriod.start)
+        setPeriodEnd(nextPeriod.end)
+        setStatus('live')
+        setMessage(`Payroll marked paid for ${row.employee.full_name}. The next payroll period has started automatically.`)
+      }
     } catch { setError('Payroll could not be updated. Check your connection.') } finally { setPaying(null) }
   }
 
