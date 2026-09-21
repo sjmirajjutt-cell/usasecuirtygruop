@@ -7,7 +7,7 @@ type Payment = { id: string; employee_id: string; period_start: string; period_e
 type PayrollRow = { employee: Profile; hours: number; amount: number; payment?: Payment }
 type Filters = { search: string; status: string; from: string; to: string }
 const emptyFilters: Filters = { search: '', status: '', from: '', to: '' }
-const dateValue = (date: Date) => date.toISOString().slice(0, 10)
+const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
 function nextPayrollPeriod(periodEnd: string) {
   const start = new Date(`${periodEnd}T00:00:00`)
@@ -17,8 +17,9 @@ function nextPayrollPeriod(periodEnd: string) {
 
 export function PayrollManager({ employees, attendance, payments }: { employees: Profile[]; attendance: Attendance[]; payments: Payment[] }) {
   const today = new Date()
-  const [periodStart, setPeriodStart] = useState(dateValue(new Date(today.getFullYear(), today.getMonth(), 1)))
-  const [periodEnd, setPeriodEnd] = useState(dateValue(today))
+  const initialPeriod = payments[0] ? nextPayrollPeriod(payments[0].period_end) : { start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)), end: dateValue(today) }
+  const [periodStart, setPeriodStart] = useState(initialPeriod.start)
+  const [periodEnd, setPeriodEnd] = useState(initialPeriod.end)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
   const [attendanceRows, setAttendanceRows] = useState(attendance)
   const [paymentRows, setPaymentRows] = useState(payments)
