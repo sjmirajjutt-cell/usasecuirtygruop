@@ -47,7 +47,8 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   const rows = useMemo<PayrollRow[]>(() => employees.map(employee => {
     const shifts = attendanceRows.filter(row => {
       const shiftDate = dateValue(new Date(row.check_in))
-      return row.employee_id === employee.id && shiftDate >= periodStart && shiftDate <= periodEnd
+      const isActiveShift = !row.check_out
+      return row.employee_id === employee.id && (isActiveShift || (shiftDate >= periodStart && shiftDate <= periodEnd))
     })
     const hours = shifts.reduce((total, row) => total + Number(row.total_hours ?? Math.max(0, (now - new Date(row.check_in).getTime()) / 3600000)), 0)
     const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
