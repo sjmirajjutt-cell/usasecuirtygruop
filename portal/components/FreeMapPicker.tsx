@@ -13,7 +13,10 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
 function parseCoordinates(value: string): Coordinates | null {
   try {
     const decoded = decodeURIComponent(value)
-    const match = decoded.match(/(?:@|!3d|[?&](?:q|query|ll|location)=)?(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/)
+    const match = decoded.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+)/)
+      || decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
+      || decoded.match(/[?&](?:q|query|ll|location)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i)
+      || decoded.match(/^\s*(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)\s*$/)
     if (!match) return null
     const lat = Number(match[1])
     const lng = Number(match[2])
