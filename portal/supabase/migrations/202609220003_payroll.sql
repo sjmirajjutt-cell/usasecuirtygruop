@@ -15,5 +15,7 @@ create table if not exists public.payroll_payments (
 alter table public.payroll_payments enable row level security;
 drop policy if exists "admins manage payroll" on public.payroll_payments;
 create policy "admins manage payroll" on public.payroll_payments for all to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "employees read own payroll" on public.payroll_payments;
+create policy "employees read own payroll" on public.payroll_payments for select to authenticated using (employee_id = auth.uid() or public.is_admin());
 create index if not exists payroll_employee_period_idx on public.payroll_payments(employee_id, period_start desc);
 notify pgrst, 'reload schema';
