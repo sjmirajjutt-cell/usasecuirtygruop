@@ -155,7 +155,15 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     setError('')
     setSuggestions([])
     try {
-      const results = await searchMapbox(searchQuery.trim(), 1)
+      const input = searchQuery.trim()
+      const directCoordinates = parseCoordinates(input)
+      if (directCoordinates) {
+        setSearchQuery('')
+        await selectCoordinates(directCoordinates)
+        return
+      }
+
+      const results = await searchMapbox(input, 1)
       if (!results[0]) throw new Error('Location not found')
       setSearchQuery('')
       await selectCoordinates(results[0], results[0])
