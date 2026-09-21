@@ -80,7 +80,9 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   async function searchMapbox(value: string, limit: number) {
     if (!MAPBOX_TOKEN) throw new Error('NEXT_PUBLIC_MAPBOX_TOKEN configured nahi hai.')
     const coordinates = parseCoordinates(value)
-    if (coordinates) return [await reverseGeocode(coordinates)]
+    if (coordinates) {
+      return [{ ...coordinates, address: `${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}`, locationName: 'Google Maps location' }]
+    }
 
     let query = value.trim()
     try {
