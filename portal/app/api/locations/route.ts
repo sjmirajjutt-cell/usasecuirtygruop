@@ -60,8 +60,28 @@ export async function PATCH(request: Request) {
   const auth = await getAdmin()
   if ('response' in auth) return auth.response
   const body = await request.json()
-  const employeeId = String(body.employeeId ?? '')
   const locationId = body.locationId ? String(body.locationId) : null
+
+  if (locationId && body.employeeId === undefined) {
+    const locationName = String(body.locationName ?? '').trim()
+    const address = String(body.address ?? '').trim()
+    const clientId = body.clientId ? String(body.clientId) : null
+    const latitude = Number(body.latitude)
+    const longitude = Number(body.longitude)
+    const allowedRadiusMeters = Number(body.allowedRadiusMeters)
+    if (!locationName || !address || !clientId || !Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(allowedRadiusMeters)) {
+      return NextResponse.json({ error: 'Location name, client, map point, address, and radius are required.' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const { data: client } = await admin.from('clients').select('name').eq('id', clientId).single()
+    if (!client) return NextResponse.json({ error: 'Selected client nahi mila.' }, { status: 400 })
+    const { data, error } = await admin.from('work_locations').update({ location_name: locationName, address, client_id: clientId, client_name: client.name, latitude, longitude, allowed_radius_meters: allowedRadiusMeters }).eq('id', locationId).select('*').single()
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    return NextResponse.json({ location: data })
+  }
+
+  const employeeId = String(body.employeeId ?? '')
   if (!employeeId) return NextResponse.json({ error: 'Employee is required.' }, { status: 400 })
 
   const admin = createAdminClient()
