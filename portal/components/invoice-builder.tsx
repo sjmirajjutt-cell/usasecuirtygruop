@@ -46,7 +46,7 @@ export function InvoiceBuilder({ initialClients }: Props) {
       if (!response.ok) setMessage(result.error ?? `Unable to save client (${response.status})`)
       else { setClients(current => [...current, result.client].sort((a, b) => a.name.localeCompare(b.name))); setSelectedId(result.client.id); setShowClientForm(false); setMessage('Client saved. It is ready for future invoices.') }
     } catch {
-      setMessage('Client save nahi ho saki. Login aur internet connection check karein.')
+      setMessage('Client could not be saved. Check your login and internet connection.')
     } finally {
       setSavingClient(false)
     }

@@ -55,7 +55,7 @@ export function EmployeeAttendance({ employeeId, initialOpen, initialHistory }: 
       const data = result.attendance as Attendance | undefined
       if (!response.ok) setError(result.error?.includes('duplicate') ? 'You already have an active shift.' : result.error ?? 'Unable to check in.')
       else if (data) { setOpenShift(data); setHistory(rows => [data, ...rows]) }
-    } catch { setError('Location permission required hai. Browser location allow karke dobara check-in karein.') }
+    } catch { setError('Location permission is required. Allow browser location access and try checking in again.') }
     setLoading(false)
   }
 

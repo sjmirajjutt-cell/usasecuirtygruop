@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (clientId) {
     const admin = createAdminClient()
     const { data: client } = await admin.from('clients').select('name').eq('id', clientId).single()
-    if (!client) return NextResponse.json({ error: 'Selected client nahi mila.' }, { status: 400 })
+    if (!client) return NextResponse.json({ error: 'The selected client was not found.' }, { status: 400 })
     clientName = client.name
   }
   if (!locationName || !address || !clientName || !Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(allowedRadiusMeters)) {
@@ -75,7 +75,7 @@ export async function PATCH(request: Request) {
 
     const admin = createAdminClient()
     const { data: client } = await admin.from('clients').select('name').eq('id', clientId).single()
-    if (!client) return NextResponse.json({ error: 'Selected client nahi mila.' }, { status: 400 })
+    if (!client) return NextResponse.json({ error: 'The selected client was not found.' }, { status: 400 })
     const { data, error } = await admin.from('work_locations').update({ location_name: locationName, address, client_id: clientId, client_name: client.name, latitude, longitude, allowed_radius_meters: allowedRadiusMeters }).eq('id', locationId).select('*').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
     return NextResponse.json({ location: data })

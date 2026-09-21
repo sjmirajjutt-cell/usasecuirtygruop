@@ -35,7 +35,7 @@ export function LoginForm() {
     setError('')
     setNotice('')
     if (!normalizedEmail) {
-      setError('Pehle apna email enter karein.')
+      setError('Enter your email first.')
       return
     }
 
@@ -45,7 +45,7 @@ export function LoginForm() {
     })
     setSendingReset(false)
     if (resetError) setError(resetError.message)
-    else setNotice('Password reset link aapke email par bhej diya gaya hai.')
+    else setNotice('A password reset link has been sent to your email.')
   }
 
   return (

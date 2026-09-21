@@ -36,9 +36,9 @@ export async function POST(request: Request) {
   const longitude = Number(body.longitude)
   const accuracy = Number(body.accuracy)
   const { data: profile } = await auth.supabase.from('profiles').select('assigned_location_id').eq('id', auth.user.id).single()
-  if (!profile?.assigned_location_id) return NextResponse.json({ error: 'Admin ne pehle aapko work location assign nahi ki.' }, { status: 400 })
+  if (!profile?.assigned_location_id) return NextResponse.json({ error: 'An administrator has not assigned you a work location yet.' }, { status: 400 })
   const { data: location } = await auth.supabase.from('work_locations').select('id, latitude, longitude, allowed_radius_meters').eq('id', profile.assigned_location_id).single()
-  if (!location || !Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return NextResponse.json({ error: 'Assigned location ka map point configured nahi hai.' }, { status: 400 })
+  if (!location || !Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return NextResponse.json({ error: 'The assigned location does not have valid map coordinates.' }, { status: 400 })
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return NextResponse.json({ error: 'Check-in ke liye browser location permission zaroori hai.' }, { status: 400 })
 
   const distance = distanceInMeters(latitude, longitude, Number(location.latitude), Number(location.longitude))

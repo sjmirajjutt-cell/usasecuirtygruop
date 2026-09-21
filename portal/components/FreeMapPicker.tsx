@@ -73,12 +73,12 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       const fallback = { ...coordinates, address: `${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}` }
       setAddress(fallback.address)
       callbackRef.current(fallback)
-      setError('Mapbox address resolve nahi kar saka, lekin coordinates select ho gaye hain.')
+      setError('Mapbox could not resolve the address, but the coordinates were selected.')
     }
   }
 
   async function searchMapbox(value: string, limit: number) {
-    if (!MAPBOX_TOKEN) throw new Error('NEXT_PUBLIC_MAPBOX_TOKEN configured nahi hai.')
+    if (!MAPBOX_TOKEN) throw new Error('NEXT_PUBLIC_MAPBOX_TOKEN is not configured.')
     const coordinates = parseCoordinates(value)
     if (coordinates) {
       return [{ ...coordinates, address: `${coordinates.lat.toFixed(6)}, ${coordinates.lng.toFixed(6)}`, locationName: 'Google Maps location' }]
@@ -104,7 +104,7 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     async function initializeMap() {
       if (!mapContainerRef.current || mapRef.current) return
       if (!MAPBOX_TOKEN) {
-        setError('Mapbox token configured nahi hai.')
+        setError('Mapbox token is not configured.')
         return
       }
       const mapboxgl = (await import('mapbox-gl')).default
@@ -168,7 +168,7 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       setSearchQuery('')
       await selectCoordinates(results[0], results[0])
     } catch {
-      setError('Mapbox ko location nahi mili. Address, Google Maps link, ya coordinates dobara enter karein.')
+      setError('Mapbox could not find this location. Enter the address, Google Maps link, or coordinates again.')
     } finally {
       setIsSearching(false)
     }
@@ -177,12 +177,12 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   async function useCurrentLocation() {
     setError('')
     if (!navigator.geolocation) {
-      setError('Browser geolocation available nahi hai.')
+      setError('Browser geolocation is not available.')
       return
     }
     navigator.geolocation.getCurrentPosition(
       location => { void selectCoordinates({ lat: location.coords.latitude, lng: location.coords.longitude }) },
-      () => setError('Current location access reject ho gaya.')
+      () => setError('Current location access was denied.')
     )
   }
 
@@ -190,7 +190,7 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     const lat = Number(manualLat)
     const lng = Number(manualLng)
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      setError('Latitude aur longitude valid numbers hone chahiye.')
+      setError('Latitude and longitude must be valid numbers.')
       return
     }
     setError('')

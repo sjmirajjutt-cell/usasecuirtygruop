@@ -35,7 +35,7 @@ export default function ResetPasswordPage() {
         const result = await supabase.auth.exchangeCodeForSession(code)
         authError = result.error
         if (authError?.message.toLowerCase().includes('code verifier')) {
-          setError('Yeh reset link kisi aur browser/device mein open hua hai. Login page se naya reset link request karein.')
+          setError('This reset link was opened in another browser or device. Request a new reset link from the login page.')
           return
         }
       } else if (accessToken && refreshToken) {

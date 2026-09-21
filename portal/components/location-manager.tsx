@@ -29,16 +29,16 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
       const response = await fetch('/api/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clientForm) })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
-        setError(result.error ?? `Client save nahi ho saki (${response.status}).`)
+        setError(result.error ?? `Client could not be saved (${response.status}).`)
         return
       }
       setClients(current => [...current, result.client].sort((a, b) => a.name.localeCompare(b.name)))
       setSelectedClientId(result.client.id)
       setClientForm({ name: '', addressLine1: '', addressLine2: '', phone: '', email: '' })
       setShowClientForm(false)
-      setMessage('Client save ho gaya. Ab location save kar sakte hain.')
+      setMessage('Client saved. You can now save the location.')
     } catch {
-      setError('Client save nahi ho saki. Login aur internet connection check karein.')
+      setError('Client could not be saved. Check your login and internet connection.')
     } finally {
       setSavingClient(false)
     }
@@ -47,7 +47,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
   async function createLocation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setSaving(true); setMessage(''); setError('')
-    if (!selected) { setError('Pehle map par location search ya select karein.'); setSaving(false); return }
+    if (!selected) { setError('Search for or select a location on the map first.'); setSaving(false); return }
 
     const form = new FormData(event.currentTarget)
     const nextLocationName = String(form.get('locationName') ?? '').trim() || selected.locationName || selected.address.split(',')[0].trim() || 'Work Location'
@@ -60,10 +60,10 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
         body: JSON.stringify({ ...Object.fromEntries(form), locationId: editingLocationId, locationName: nextLocationName, clientId: selectedClientId, allowedRadiusMeters: allowedRadius, latitude: selected.lat, longitude: selected.lng, address: selected.address })
       })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok) setError(result.error ?? `Location save nahi ho saki (${response.status}).`)
-      else { setLocations(current => [...current.filter(location => location.id !== result.location.id), result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage(editingLocationId ? 'Location update ho gayi.' : 'Location save ho gayi. Ab guard assign karein.'); event.currentTarget.reset(); setLocationName(''); setAllowedRadius('150'); setSelectedClientId(''); setSelected(null); setEditingLocationId(null) }
+      if (!response.ok) setError(result.error ?? `Location could not be saved (${response.status}).`)
+      else { setLocations(current => [...current.filter(location => location.id !== result.location.id), result.location].sort((a, b) => a.location_name.localeCompare(b.location_name))); setMessage(editingLocationId ? 'Location updated.' : 'Location saved. You can now assign a guard.'); event.currentTarget.reset(); setLocationName(''); setAllowedRadius('150'); setSelectedClientId(''); setSelected(null); setEditingLocationId(null) }
     } catch {
-      setError('Location save nahi ho saki. Login aur internet connection check karein.')
+      setError('Location could not be saved. Check your login and internet connection.')
     } finally {
       setSaving(false)
     }
@@ -75,7 +75,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
     setSelectedClientId(location.client_id ?? '')
     setAllowedRadius(String(location.allowed_radius_meters))
     if (location.latitude !== null && location.longitude !== null) setSelected({ lat: location.latitude, lng: location.longitude, address: location.address, locationName: location.location_name })
-    setMessage('Location edit mode mein hai. Values update karke save karein.')
+    setMessage('Edit mode is active. Update the values and save the location.')
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -88,8 +88,8 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
     setAssigning(employeeId); setError(''); setMessage('')
     const response = await fetch('/api/locations', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId, locationId: locationId || null }) })
     const result = await response.json()
-    if (!response.ok) setError(result.error ?? 'Assignment save nahi hui.')
-    else { setEmployees(current => current.map(employee => employee.id === employeeId ? { ...employee, assigned_location_id: locationId || null } : employee)); setMessage('Guard ki location assignment update ho gayi.') }
+    if (!response.ok) setError(result.error ?? 'Assignment could not be saved.')
+    else { setEmployees(current => current.map(employee => employee.id === employeeId ? { ...employee, assigned_location_id: locationId || null } : employee)); setMessage('Guard location assignment updated.') }
     setAssigning(null)
   }
 
@@ -98,7 +98,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
       <section className="panel p-6">
         <span className="section-kicker">Location setup</span>
         <h3 className="mt-2 text-lg font-bold text-[#12263f]">Add a work location</h3>
-        <p className="mt-1 text-sm text-slate-500">Search ya map marker drag karke exact site select karein.</p>
+        <p className="mt-1 text-sm text-slate-500">Search or drag the map marker to select the exact site.</p>
         <form onSubmit={createLocation} className="mt-5 space-y-4">
           <label className="block text-xs font-bold text-slate-600">Location name<input name="locationName" value={locationName} onChange={event => setLocationName(event.target.value)} required placeholder="Downtown Security Site" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
           <div className="space-y-2"><label className="block text-xs font-bold text-slate-600">Saved client<select name="clientId" value={selectedClientId} onChange={event => setSelectedClientId(event.target.value)} required className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal"><option value="">Choose a saved client</option>{clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}</select></label><button type="button" onClick={() => setShowClientForm(value => !value)} className="text-xs font-bold text-[#2d8fd5]">{showClientForm ? 'Close add client' : '+ Add client here'}</button></div>
@@ -115,7 +115,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
         <div className="panel-heading"><div><span className="section-kicker">Saved sites</span><h3>Work locations</h3></div><span className="text-sm text-slate-400">{locations.length} total</span></div>
         <div className="divide-y divide-slate-100">
           {locations.map(location => <div key={location.id} className="flex items-start justify-between gap-3 p-5"><div><p className="font-bold text-[#12263f]">{location.location_name}</p><p className="mt-1 text-sm text-slate-500">{location.address}</p><p className="mt-2 text-xs text-slate-400">{location.client_name} · {location.allowed_radius_meters}m radius</p></div><button type="button" onClick={() => editLocation(location)} className="rounded-md border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">Edit</button></div>)}
-          {locations.length === 0 && <p className="p-6 text-sm text-slate-500">Abhi koi location save nahi hui.</p>}
+          {locations.length === 0 && <p className="p-6 text-sm text-slate-500">No locations saved yet.</p>}
         </div>
       </section>
     </div>
@@ -124,7 +124,7 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
       <div className="panel-heading"><div><span className="section-kicker">Assignments</span><h3>Guard locations</h3></div><span className="text-sm text-slate-400">GPS check-in enabled</span></div>
       <div className="divide-y divide-slate-100">
         {employees.map(employee => <div key={employee.id} className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-bold text-[#12263f]">{employee.full_name}</p><p className="text-xs text-slate-500">{employee.employee_id || employee.id}</p></div><select value={employee.assigned_location_id ?? ''} disabled={assigning === employee.id} onChange={event => void assignLocation(employee.id, event.target.value)} className="min-w-64 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">No location assigned</option>{locations.map(location => <option key={location.id} value={location.id}>{location.location_name}</option>)}</select></div>)}
-        {employees.length === 0 && <p className="p-6 text-sm text-slate-500">Pehle employee create karein.</p>}
+        {employees.length === 0 && <p className="p-6 text-sm text-slate-500">Create an employee first.</p>}
       </div>
     </section>
   </div>
