@@ -20,7 +20,7 @@ export function AttendanceHistory({ rows, employees, locations = [] }: { rows: A
       if (response.ok) setAttendance((await response.json()).attendance as Attendance[])
     }
     const timer = window.setInterval(refresh, 10000)
-    const channel = supabase.channel('admin-attendance-live').on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, refresh).on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, refresh).subscribe()
+    const channel = supabase.channel('admin-attendance-history-live').on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, refresh).on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, refresh).subscribe()
     return () => { window.clearInterval(timer); supabase.removeChannel(channel) }
   }, [])
 

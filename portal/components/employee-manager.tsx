@@ -25,7 +25,7 @@ export function EmployeeManager({ initialEmployees, initialAttendance }: { initi
       setAttendance(result.attendance as Attendance[])
     }
     const refreshTimer = window.setInterval(refreshAttendance, 5000)
-    const channel = supabase.channel('admin-attendance-live')
+    const channel = supabase.channel('admin-employees-attendance-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, payload => {
         const row = payload.new as Attendance
         if (payload.eventType === 'INSERT') setAttendance(rows => [row, ...rows.filter(item => item.id !== row.id)])
