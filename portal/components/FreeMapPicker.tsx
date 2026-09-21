@@ -73,11 +73,22 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
     return parseGoogleMapsUrl(trimmed)
   }
 
+  function getFallbackLocationName(value?: string) {
+    if (!value) return undefined
+    const cleanValue = value.replace(/https?:\/\/[^\s]+/gi, '').replace(/\s+/g, ' ').trim()
+    const firstPart = cleanValue.split(',')[0]?.trim()
+    const label = firstPart && firstPart.length > 2 ? firstPart : cleanValue
+    return label || undefined
+  }
+
   async function selectPosition(lat: number, lng: number, fallbackAddress?: string, locationName?: string) {
     setPosition({ lat, lng })
+
+    const resolvedLocationName = locationName || getFallbackLocationName(fallbackAddress)
+
     if (fallbackAddress) {
       setAddress(fallbackAddress)
-      onLocationSelect({ lat, lng, address: fallbackAddress, locationName })
+      onLocationSelect({ lat, lng, address: fallbackAddress, locationName: resolvedLocationName })
       return
     }
 
@@ -85,12 +96,14 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
       const result = await response.json()
       const selectedAddress = result.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      const nextLocationName = resolvedLocationName || getFallbackLocationName(selectedAddress)
       setAddress(selectedAddress)
-      onLocationSelect({ lat, lng, address: selectedAddress, locationName })
+      onLocationSelect({ lat, lng, address: selectedAddress, locationName: nextLocationName })
     } catch {
       const selectedAddress = `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      const nextLocationName = resolvedLocationName || getFallbackLocationName(selectedAddress)
       setAddress(selectedAddress)
-      onLocationSelect({ lat, lng, address: selectedAddress, locationName })
+      onLocationSelect({ lat, lng, address: selectedAddress, locationName: nextLocationName })
     }
   }
 

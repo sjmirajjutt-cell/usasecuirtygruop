@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { Client, Profile, WorkLocation } from '@/lib/supabase/database.types'
 import FreeMapPicker from '@/components/FreeMapPicker'
 
-type SelectedLocation = { lat: number; lng: number; address: string }
+type SelectedLocation = { lat: number; lng: number; address: string; locationName?: string }
 
 export function LocationManager({ initialEmployees, initialLocations, initialClients }: { initialEmployees: Profile[]; initialLocations: WorkLocation[]; initialClients: Client[] }) {
   const [employees, setEmployees] = useState(initialEmployees)
@@ -20,11 +20,15 @@ export function LocationManager({ initialEmployees, initialLocations, initialCli
     event.preventDefault()
     setSaving(true); setMessage(''); setError('')
     if (!selected) { setError('Pehle map par location search ya select karein.'); setSaving(false); return }
+
     const form = new FormData(event.currentTarget)
+    const nextLocationName = String(form.get('locationName') ?? '').trim() || selected.locationName || selected.address.split(',')[0].trim() || 'Work Location'
+    if (nextLocationName) setLocationName(nextLocationName)
+
     const response = await fetch('/api/locations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...Object.fromEntries(form), latitude: selected.lat, longitude: selected.lng, address: selected.address })
+      body: JSON.stringify({ ...Object.fromEntries(form), locationName: nextLocationName, latitude: selected.lat, longitude: selected.lng, address: selected.address })
     })
     const result = await response.json()
     if (!response.ok) setError(result.error ?? 'Location save nahi ho saki.')
