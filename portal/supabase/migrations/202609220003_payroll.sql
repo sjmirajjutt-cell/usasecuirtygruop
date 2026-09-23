@@ -8,8 +8,7 @@ create table if not exists public.payroll_payments (
   status text not null default 'paid' check (status in ('paid')),
   paid_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
-  constraint payroll_period_valid check (period_end >= period_start),
-  unique (employee_id, period_start, period_end)
+  constraint payroll_period_valid check (period_end >= period_start)
 );
 
 alter table public.payroll_payments enable row level security;
