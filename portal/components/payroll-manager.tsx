@@ -108,7 +108,8 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       if (!response.ok) setError(result.error ?? 'Payroll could not be marked paid.')
       else {
         const next = nextPayrollPeriod(periodEnd)
-        setPaymentRows(current => [result.payment, ...current])
+        setAttendanceRows(current => current.map(attendance => attendance.employee_id === row.employee.id && attendance.is_paid !== true ? { ...attendance, is_paid: true } : attendance))
+        setPaymentRows(current => [result.payment, ...current.filter(payment => payment.id !== result.payment.id)])
         setPeriodStart(next.start); setPeriodEnd(next.end); setFilters(emptyFilters)
         setMessage(`Payroll marked paid for ${row.employee.full_name}. The next payroll period started automatically.`)
       }
