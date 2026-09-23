@@ -89,7 +89,8 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       const end = row.check_out ? new Date(row.check_out).getTime() : now
       return total + Math.max(0, (end - start) / 3600000)
     }, 0)
-    const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
+    const paymentRecord = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
+    const payment = shifts.length === 0 ? paymentRecord : undefined
     return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), attendanceIds: shifts.map(shift => shift.id), payment }
   }), [safeEmployees, attendanceRows, paymentRows, periodStart, periodEnd, now])
 
