@@ -84,7 +84,11 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       const isActiveShift = !row.check_out
       return row.employee_id === employee.id && row.is_paid !== true && (isActiveShift || (shiftDate >= periodStart && shiftDate <= periodEnd))
     })
-    const hours = shifts.reduce((total, row) => total + Number(row.total_hours ?? Math.max(0, (now - new Date(row.check_in).getTime()) / 3600000)), 0)
+    const hours = shifts.reduce((total, row) => {
+      const start = new Date(row.paid_at ?? row.check_in).getTime()
+      const end = row.check_out ? new Date(row.check_out).getTime() : now
+      return total + Math.max(0, (end - start) / 3600000)
+    }, 0)
     const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
     return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), attendanceIds: shifts.map(shift => shift.id), payment }
   }), [safeEmployees, attendanceRows, paymentRows, periodStart, periodEnd, now])
@@ -109,7 +113,10 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
       if (!response.ok) setError(result.error ?? 'Payroll could not be marked paid.')
       else {
         const next = nextPayrollPeriod(periodEnd)
-        setAttendanceRows(current => current.map(attendance => row.attendanceIds.includes(attendance.id) ? { ...attendance, is_paid: true } : attendance))
+        setAttendanceRows(current => current.map(attendance => {
+          if (!row.attendanceIds.includes(attendance.id)) return attendance
+          return attendance.check_out ? { ...attendance, is_paid: true } : { ...attendance, is_paid: false, paid_at: result.paidAt }
+        }))
         setPaymentRows(current => [result.payment, ...current.filter(payment => payment.id !== result.payment.id)])
         setPeriodStart(next.start); setPeriodEnd(next.end); setFilters(emptyFilters)
         setMessage(`Payroll marked paid for ${row.employee.full_name}. The next payroll period started automatically.`)

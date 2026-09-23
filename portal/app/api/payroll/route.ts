@@ -40,11 +40,13 @@ export async function POST(request: Request) {
   const { data, error } = await admin.from('payroll_payments').insert({ employee_id: employeeId, period_start: periodStart, period_end: periodEnd, total_hours: totalHours, gross_amount: grossAmount }).select('*').single()
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'This employee payroll period is already marked as paid.' : error.message }, { status: 400 })
 
-  const { error: attendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).in('id', attendanceIds)
-  if (attendanceError) {
+  const paidAt = new Date().toISOString()
+  const { error: activeAttendanceError } = await admin.from('attendance').update({ paid_at: paidAt, is_paid: false }).eq('employee_id', employeeId).eq('is_paid', false).is('check_out', null).in('id', attendanceIds)
+  const { error: completedAttendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).not('check_out', 'is', null).in('id', attendanceIds)
+  if (activeAttendanceError || completedAttendanceError) {
     await admin.from('payroll_payments').delete().eq('id', data.id)
-    return NextResponse.json({ error: attendanceError.message }, { status: 400 })
+    return NextResponse.json({ error: activeAttendanceError?.message ?? completedAttendanceError?.message }, { status: 400 })
   }
 
-  return NextResponse.json({ payment: data })
+  return NextResponse.json({ payment: data, paidAt })
 }
