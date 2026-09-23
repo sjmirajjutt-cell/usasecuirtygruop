@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 type PasswordResetRequestSummary = {
   id: string
@@ -109,8 +110,15 @@ function AdminNotifications() {
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [pendingRequestCount, setPendingRequestCount] = useState(0)
+
+  async function signOut() {
+    await createClient().auth.signOut()
+    router.replace('/login')
+    router.refresh()
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -191,6 +199,10 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <span className="material-icons">settings</span>
           Settings
         </Link>
+        <button type="button" onClick={() => void signOut()} className="sidebar-link w-full text-left">
+          <span className="material-icons">logout</span>
+          Sign out
+        </button>
 
         <div className="sidebar-user mt-auto">
           <div className="avatar">VC</div>
