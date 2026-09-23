@@ -18,4 +18,8 @@ create policy "admins manage payroll" on public.payroll_payments for all to auth
 drop policy if exists "employees read own payroll" on public.payroll_payments;
 create policy "employees read own payroll" on public.payroll_payments for select to authenticated using (employee_id = auth.uid() or public.is_admin());
 create index if not exists payroll_employee_period_idx on public.payroll_payments(employee_id, period_start desc);
+
+alter table public.attendance add column if not exists is_paid boolean not null default false;
+create index if not exists attendance_employee_paid_idx on public.attendance(employee_id, is_paid, check_in desc);
+
 notify pgrst, 'reload schema';

@@ -19,11 +19,17 @@ function nextPayrollPeriod(periodEnd: string) {
   return { start: dateValue(start), end: dateValue(new Date(start.getFullYear(), start.getMonth() + 1, 0)) }
 }
 
+function getLatestPaidPeriod(payments: Payment[]) {
+  if (!payments.length) return null
+  return [...payments].sort((a, b) => new Date(b.period_end).getTime() - new Date(a.period_end).getTime())[0]
+}
+
 function getInitialPayrollPeriod(payments: Payment[], today = new Date()) {
-  if (!payments.length) {
+  const latestPaidPeriod = getLatestPaidPeriod(payments)
+  if (!latestPaidPeriod) {
     return { start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)), end: dateValue(today) }
   }
-  return nextPayrollPeriod(payments[0].period_end)
+  return nextPayrollPeriod(latestPaidPeriod.period_end)
 }
 
 export function PayrollManager({ employees, attendance, payments }: { employees: Profile[]; attendance: Attendance[]; payments: Payment[] }) {
@@ -35,7 +41,6 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   const [periodStart, setPeriodStart] = useState(initialPeriod.start)
   const [periodEnd, setPeriodEnd] = useState(initialPeriod.end)
   const [filters, setFilters] = useState<Filters>(emptyFilters)
-  const activePeriod = useMemo(() => getInitialPayrollPeriod(safePayments, today), [safePayments, today])
   const [attendanceRows, setAttendanceRows] = useState(safeAttendance)
   const [paymentRows, setPaymentRows] = useState(safePayments)
   const [now, setNow] = useState(Date.now())
@@ -54,12 +59,13 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
         const [attendanceResponse, payrollResponse] = await Promise.all([fetch('/api/attendance', { cache: 'no-store' }), fetch('/api/payroll', { cache: 'no-store' })])
         if (attendanceResponse.ok) setAttendanceRows((await attendanceResponse.json()).attendance ?? [])
         if (payrollResponse.ok) {
-          const nextPayments = (await payrollResponse.json()).payments ?? []
-          setPaymentRows(nextPayments)
-          const nextActivePeriod = getInitialPayrollPeriod(nextPayments, new Date())
-          if (periodStart !== nextActivePeriod.start || periodEnd !== nextActivePeriod.end) {
-            setPeriodStart(nextActivePeriod.start)
-            setPeriodEnd(nextActivePeriod.end)
+          const refreshedPayments = (await payrollResponse.json()).payments ?? []
+          setPaymentRows(refreshedPayments)
+          const latestPaidPeriod = getLatestPaidPeriod(refreshedPayments)
+          if (latestPaidPeriod) {
+            const next = nextPayrollPeriod(latestPaidPeriod.period_end)
+            setPeriodStart(current => current === next.start && periodEnd === next.end ? current : next.start)
+            setPeriodEnd(current => current === next.end && periodStart === next.start ? current : next.end)
           }
         }
       } catch {
@@ -71,18 +77,10 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     return () => window.clearInterval(timer)
   }, [periodEnd, periodStart])
 
-  useEffect(() => {
-    if (periodStart !== activePeriod.start || periodEnd !== activePeriod.end) {
-      setPeriodStart(activePeriod.start)
-      setPeriodEnd(activePeriod.end)
-    }
-  }, [activePeriod, periodEnd, periodStart])
-
   const rows = useMemo<PayrollRow[]>(() => safeEmployees.map(employee => {
     const shifts = attendanceRows.filter(row => {
       const shiftDate = dateValue(new Date(row.check_in))
-      const isActiveShift = !row.check_out
-      return row.employee_id === employee.id && (isActiveShift || (shiftDate >= periodStart && shiftDate <= periodEnd))
+      return row.employee_id === employee.id && !row.is_paid && shiftDate >= periodStart && shiftDate <= periodEnd
     })
     const hours = shifts.reduce((total, row) => total + Number(row.total_hours ?? Math.max(0, (now - new Date(row.check_in).getTime()) / 3600000)), 0)
     const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
