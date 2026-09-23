@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Attendance, Profile } from '@/lib/supabase/database.types'
 
 type Payment = { id: string; employee_id: string; period_start: string; period_end: string; total_hours: number; gross_amount: number; status: string; paid_at: string }
-type PayrollRow = { employee: Profile; hours: number; amount: number; payment?: Payment }
+type PayrollRow = { employee: Profile; hours: number; amount: number; attendanceIds: string[]; payment?: Payment }
 type Filters = { search: string; status: string; from: string; to: string }
 const emptyFilters: Filters = { search: '', status: '', from: '', to: '' }
 const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -25,7 +25,8 @@ function getLatestPaidPeriod(payments: Payment[]) {
 }
 
 function getInitialPayrollPeriod(payments: Payment[], today = new Date()) {
-  const latestPaidPeriod = getLatestPaidPeriod(payments)
+  const todayValue = dateValue(today)
+  const latestPaidPeriod = getLatestPaidPeriod(payments.filter(payment => payment.period_end <= todayValue))
   if (!latestPaidPeriod) {
     return { start: dateValue(new Date(today.getFullYear(), today.getMonth(), 1)), end: dateValue(today) }
   }
@@ -61,7 +62,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
         if (payrollResponse.ok) {
           const refreshedPayments = (await payrollResponse.json()).payments ?? []
           setPaymentRows(refreshedPayments)
-          const latestPaidPeriod = getLatestPaidPeriod(refreshedPayments)
+            const latestPaidPeriod = getLatestPaidPeriod(refreshedPayments.filter((payment: Payment) => payment.period_end <= dateValue(new Date())))
           if (latestPaidPeriod) {
             const next = nextPayrollPeriod(latestPaidPeriod.period_end)
             setPeriodStart(current => current === next.start && periodEnd === next.end ? current : next.start)
@@ -85,7 +86,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     })
     const hours = shifts.reduce((total, row) => total + Number(row.total_hours ?? Math.max(0, (now - new Date(row.check_in).getTime()) / 3600000)), 0)
     const payment = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
-    return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), payment }
+    return { employee, hours: payment ? Number(payment.total_hours) : hours, amount: payment ? Number(payment.gross_amount) : hours * Number(employee.hourly_rate), attendanceIds: shifts.map(shift => shift.id), payment }
   }), [safeEmployees, attendanceRows, paymentRows, periodStart, periodEnd, now])
 
   const liveRows = rows.filter(row => !row.payment)
@@ -103,12 +104,12 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   async function markPaid(row: PayrollRow) {
     setPaying(row.employee.id); setError(''); setMessage('')
     try {
-      const response = await fetch('/api/payroll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: row.employee.id, periodStart, periodEnd, totalHours: row.hours, grossAmount: row.amount }) })
+      const response = await fetch('/api/payroll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ employeeId: row.employee.id, periodStart, periodEnd, totalHours: row.hours, grossAmount: row.amount, attendanceIds: row.attendanceIds }) })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) setError(result.error ?? 'Payroll could not be marked paid.')
       else {
         const next = nextPayrollPeriod(periodEnd)
-        setAttendanceRows(current => current.map(attendance => attendance.employee_id === row.employee.id && attendance.is_paid !== true ? { ...attendance, is_paid: true } : attendance))
+        setAttendanceRows(current => current.map(attendance => row.attendanceIds.includes(attendance.id) ? { ...attendance, is_paid: true } : attendance))
         setPaymentRows(current => [result.payment, ...current.filter(payment => payment.id !== result.payment.id)])
         setPeriodStart(next.start); setPeriodEnd(next.end); setFilters(emptyFilters)
         setMessage(`Payroll marked paid for ${row.employee.full_name}. The next payroll period started automatically.`)

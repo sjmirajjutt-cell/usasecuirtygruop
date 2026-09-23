@@ -32,13 +32,15 @@ export async function POST(request: Request) {
   const periodEnd = String(body.periodEnd ?? '')
   const totalHours = Number(body.totalHours)
   const grossAmount = Number(body.grossAmount)
+  const attendanceIds = Array.isArray(body.attendanceIds) ? body.attendanceIds.map(String).filter(Boolean) : []
   if (!employeeId || !periodStart || !periodEnd || !Number.isFinite(totalHours) || !Number.isFinite(grossAmount)) return NextResponse.json({ error: 'Employee, payroll period, hours, and amount are required.' }, { status: 400 })
   if (totalHours <= 0 || grossAmount <= 0) return NextResponse.json({ error: 'Cannot mark payroll paid because this period has no payable hours.' }, { status: 400 })
+  if (attendanceIds.length === 0) return NextResponse.json({ error: 'No unpaid attendance records were found for this payroll.' }, { status: 400 })
   const admin = createAdminClient()
   const { data, error } = await admin.from('payroll_payments').insert({ employee_id: employeeId, period_start: periodStart, period_end: periodEnd, total_hours: totalHours, gross_amount: grossAmount }).select('*').single()
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'This employee payroll period is already marked as paid.' : error.message }, { status: 400 })
 
-  const { error: attendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false)
+  const { error: attendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).in('id', attendanceIds)
   if (attendanceError) {
     await admin.from('payroll_payments').delete().eq('id', data.id)
     return NextResponse.json({ error: attendanceError.message }, { status: 400 })
