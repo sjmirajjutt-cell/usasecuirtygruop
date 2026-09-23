@@ -38,9 +38,7 @@ export async function POST(request: Request) {
   const { data, error } = await admin.from('payroll_payments').insert({ employee_id: employeeId, period_start: periodStart, period_end: periodEnd, total_hours: totalHours, gross_amount: grossAmount }).select('*').single()
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'This employee payroll period is already marked as paid.' : error.message }, { status: 400 })
 
-  const periodEndExclusive = new Date(`${periodEnd}T00:00:00Z`)
-  periodEndExclusive.setUTCDate(periodEndExclusive.getUTCDate() + 1)
-  const { error: attendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).gte('check_in', `${periodStart}T00:00:00Z`).lt('check_in', periodEndExclusive.toISOString())
+  const { error: attendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false)
   if (attendanceError) {
     await admin.from('payroll_payments').delete().eq('id', data.id)
     return NextResponse.json({ error: attendanceError.message }, { status: 400 })
