@@ -89,7 +89,7 @@ export function LoginForm() {
       {notice && <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
 
       <button type="button" onClick={() => void sendResetLink()} disabled={sendingReset} className="mt-4 text-left text-sm font-semibold text-[#4b98cf] disabled:opacity-60">
-        {sendingReset ? 'Reset link bhej rahe hain...' : 'Forgot password? Reset link bhejein'}
+        {sendingReset ? 'Sending reset link...' : 'Forgot password? Send a reset link'}
       </button>
 
       <button

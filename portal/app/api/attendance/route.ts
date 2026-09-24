@@ -39,11 +39,11 @@ export async function POST(request: Request) {
   if (!profile?.assigned_location_id) return NextResponse.json({ error: 'An administrator has not assigned you a work location yet.' }, { status: 400 })
   const { data: location } = await auth.supabase.from('work_locations').select('id, latitude, longitude, allowed_radius_meters').eq('id', profile.assigned_location_id).single()
   if (!location || !Number.isFinite(Number(location.latitude)) || !Number.isFinite(Number(location.longitude))) return NextResponse.json({ error: 'The assigned location does not have valid map coordinates.' }, { status: 400 })
-  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return NextResponse.json({ error: 'Check-in ke liye browser location permission zaroori hai.' }, { status: 400 })
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return NextResponse.json({ error: 'Browser location permission is required to check in.' }, { status: 400 })
 
   const distance = distanceInMeters(latitude, longitude, Number(location.latitude), Number(location.longitude))
   const locationStatus = distance <= Number(location.allowed_radius_meters) ? 'matched' : 'outside_radius'
-  if (locationStatus === 'outside_radius') return NextResponse.json({ error: `Aap assigned location se ${Math.round(distance)}m door hain. Allowed radius ${location.allowed_radius_meters}m hai.` }, { status: 400 })
+  if (locationStatus === 'outside_radius') return NextResponse.json({ error: `You are ${Math.round(distance)}m from the assigned location. The allowed radius is ${location.allowed_radius_meters}m.` }, { status: 400 })
 
   const { data, error } = await auth.supabase.from('attendance').insert({ employee_id: auth.user.id, assigned_location_id: location.id, check_in_latitude: latitude, check_in_longitude: longitude, check_in_accuracy_meters: Number.isFinite(accuracy) ? accuracy : null, distance_from_location_meters: distance, location_status: locationStatus }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
