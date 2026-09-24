@@ -92,9 +92,9 @@ a { color: inherit; text-decoration: none; }
   .no-print { display: none !important; }
   .page-header { display: none !important; }
   .invoice-page { padding: 0 !important; }
-  .invoice-page > *:not(.invoice-history) { display: none !important; }
-  .invoice-history { display: block !important; margin: 0 !important; }
-  .invoice-workspace { max-width: none !important; }
+  .invoice-page > *:not(.invoice-workspace) { display: none !important; }
+  .invoice-workspace { display: block !important; max-width: none !important; margin: 0 !important; }
+  .invoice-history { display: none !important; }
   body { background: white; }
   .dashboard-content { padding: 0 !important; }
   .worksheet-report { gap: 12px !important; }
