@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type PasswordResetRequestSummary = {
@@ -26,30 +26,11 @@ const navigation = [
   { href: '/dashboard/employees', label: 'Employees', icon: 'people' }
 ]
 
+const PendingRequestsContext = createContext<PasswordResetRequestSummary[]>([])
+
 function AdminNotifications() {
-  const [items, setItems] = useState<PasswordResetRequestSummary[]>([])
+  const items = useContext(PendingRequestsContext)
   const [open, setOpen] = useState(false)
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const response = await fetch('/api/password-reset-requests', { cache: 'no-store' })
-        if (!response.ok) return
-        const payload = await response.json()
-        const pending = (payload.requests ?? []).filter((item: PasswordResetRequestSummary) => item.status === 'pending')
-        setItems(pending)
-      } catch {
-        // swallow fetch issues quietly for the header badge
-      }
-    }
-
-    void load()
-    const timer = window.setInterval(() => {
-      void load()
-    }, 30000)
-
-    return () => window.clearInterval(timer)
-  }, [])
 
   const unreadCount = items.length
 
@@ -112,7 +93,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
-  const [pendingRequestCount, setPendingRequestCount] = useState(0)
+  const [pendingRequests, setPendingRequests] = useState<PasswordResetRequestSummary[]>([])
 
   async function signOut() {
     await createClient().auth.signOut()
@@ -127,7 +108,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         if (!response.ok) return
         const payload = await response.json()
         const pending = (payload.requests ?? []).filter((item: PasswordResetRequestSummary) => item.status === 'pending')
-        setPendingRequestCount(pending.length)
+        setPendingRequests(pending)
       } catch {
         // ignore header fetch failures
       }
@@ -146,7 +127,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   }, [pathname])
 
   return (
-    <div className="min-h-screen bg-[#f6f8fa] lg:flex">
+    <PendingRequestsContext.Provider value={pendingRequests}>
+      <div className="min-h-screen bg-[#f6f8fa] lg:flex">
       <button
         type="button"
         aria-label="Toggle sidebar"
@@ -187,9 +169,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
         <Link href="/dashboard/settings#requests" className={`sidebar-link ${pathname.startsWith('/dashboard/settings') ? 'sidebar-link-active' : ''}`}>
           <span className="material-icons">notifications_active</span>
           Password resets
-          {pendingRequestCount > 0 && (
+          {pendingRequests.length > 0 && (
             <span className="ml-auto rounded-full bg-[#d4434f] px-1.5 py-0.5 text-[10px] font-bold text-white">
-              {pendingRequestCount > 9 ? '9+' : pendingRequestCount}
+              {pendingRequests.length > 9 ? '9+' : pendingRequests.length}
             </span>
           )}
         </Link>
@@ -215,7 +197,8 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="min-w-0 flex-1 bg-[#f6f8fa]">{children}</main>
-    </div>
+      </div>
+    </PendingRequestsContext.Provider>
   )
 }
 
