@@ -49,6 +49,16 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   const [error, setError] = useState('')
   const [paying, setPaying] = useState<string | null>(null)
 
+  function choosePeriod(period: 'daily' | 'weekly' | 'monthly') {
+    const end = new Date()
+    const start = new Date(end)
+    if (period === 'weekly') start.setDate(end.getDate() - ((end.getDay() + 6) % 7))
+    if (period === 'monthly') start.setDate(1)
+    setPeriodStart(dateValue(start))
+    setPeriodEnd(dateValue(end))
+    setFilters(emptyFilters)
+  }
+
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
@@ -80,14 +90,15 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
 
   const rows = useMemo<PayrollRow[]>(() => safeEmployees.map(employee => {
     const shifts = attendanceRows.filter(row => {
-      const shiftDate = dateValue(new Date(row.check_in))
+      const shiftDate = row.check_in.slice(0, 10)
       const isActiveShift = !row.check_out
       return row.employee_id === employee.id && row.is_paid !== true && (isActiveShift || (shiftDate >= periodStart && shiftDate <= periodEnd))
     })
     const hours = shifts.reduce((total, row) => {
+      if (row.attendance_status === 'absent') return total
+      if (row.check_out) return total + Math.max(0, Number(row.total_hours ?? 0))
       const start = new Date(row.paid_at ?? row.check_in).getTime()
-      const end = row.check_out ? new Date(row.check_out).getTime() : now
-      return total + Math.max(0, (end - start) / 3600000)
+      return total + Math.max(0, (now - start) / 3600000)
     }, 0)
     const paymentRecord = paymentRows.find(item => item.employee_id === employee.id && item.period_start === periodStart && item.period_end === periodEnd)
     const payment = shifts.length === 0 ? paymentRecord : undefined
@@ -128,7 +139,13 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
   return <div className="space-y-5">
     <section className="panel overflow-hidden">
       <div className="panel-heading"><div><span className="section-kicker">Payroll</span><h3>Live payroll</h3><p className="mt-1 text-sm font-normal text-slate-500">The next payroll period starts automatically after payment.</p></div></div>
-      <div className="grid gap-3 border-b border-slate-100 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-4"><input value={filters.search} onChange={event => setFilter('search', event.target.value)} placeholder="Search employee" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm" /><label className="text-xs font-bold text-slate-500">Period from<input type="date" value={periodStart} onChange={event => setPeriodStart(event.target.value)} className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal" /></label><label className="text-xs font-bold text-slate-500">Period to<input type="date" value={periodEnd} onChange={event => setPeriodEnd(event.target.value)} className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal" /></label><select value={filters.status} onChange={event => setFilter('status', event.target.value)} className="self-end rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"><option value="">All payroll</option><option value="live">Live unpaid</option><option value="paid">Paid</option></select></div>
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 pt-4">
+        <span className="mr-1 text-xs font-bold uppercase text-slate-500">Quick summary:</span>
+        <button type="button" onClick={() => choosePeriod('daily')} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">Today</button>
+        <button type="button" onClick={() => choosePeriod('weekly')} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">This week</button>
+        <button type="button" onClick={() => choosePeriod('monthly')} className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">This month</button>
+      </div>
+      <div className="grid gap-3 border-b border-slate-100 bg-slate-50 p-5 md:grid-cols-2 xl:grid-cols-3"><input value={filters.search} onChange={event => setFilter('search', event.target.value)} placeholder="Search employee" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm" /><label className="text-xs font-bold text-slate-500">Period from<input type="date" value={periodStart} onChange={event => setPeriodStart(event.target.value)} className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal" /></label><label className="text-xs font-bold text-slate-500">Period to<input type="date" value={periodEnd} onChange={event => setPeriodEnd(event.target.value)} className="mt-1 block w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-normal" /></label></div>
       {error && <p className="m-5 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}{message && <p className="m-5 rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
       <div className="grid gap-3 border-b border-slate-100 p-5 sm:grid-cols-3"><div className="rounded-md bg-slate-50 p-4"><span className="text-xs text-slate-500">Employees</span><strong className="mt-1 block text-xl text-[#12263f]">{filteredRows.length}</strong></div><div className="rounded-md bg-amber-50 p-4"><span className="text-xs text-slate-500">Live unpaid total</span><strong className="mt-1 block text-xl text-amber-700">${liveTotal.toFixed(2)}</strong></div><div className="rounded-md bg-emerald-50 p-4"><span className="text-xs text-slate-500">Paid in period</span><strong className="mt-1 block text-xl text-emerald-700">${paidTotal.toFixed(2)}</strong></div></div>
       <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-y border-slate-100 bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="px-6 py-3">Employee</th><th className="px-6 py-3">Hours</th><th className="px-6 py-3">Rate</th><th className="px-6 py-3">Payout</th><th className="px-6 py-3">Status</th><th className="px-6 py-3">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredRows.map(row => <tr key={row.employee.id}><td className="px-6 py-4 font-semibold">{row.employee.full_name || 'Unknown employee'}<small className="block text-slate-400">{row.employee.employee_id || 'No ID'}</small></td><td className="px-6 py-4">{Number(row.hours || 0).toFixed(2)}</td><td className="px-6 py-4">${Number(row.employee.hourly_rate || 0).toFixed(2)}</td><td className="px-6 py-4 font-semibold">${Number(row.amount || 0).toFixed(2)}</td><td className="px-6 py-4"><span className={row.payment ? 'font-semibold text-emerald-600' : 'font-semibold text-amber-600'}>{row.payment ? 'Paid' : 'Live'}</span></td><td className="px-6 py-4">{row.payment ? 'Moved to history' : <button type="button" onClick={() => void markPaid(row)} disabled={paying === row.employee.id || row.hours <= 0} className="rounded-md bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{paying === row.employee.id ? 'Updating...' : row.hours <= 0 ? 'No payable hours' : 'Mark paid'}</button>}</td></tr>)}</tbody></table>{filteredRows.length === 0 && <p className="p-8 text-center text-sm text-slate-500">No payroll records match these filters.</p>}</div>

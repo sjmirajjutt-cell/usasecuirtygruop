@@ -1,6 +1,7 @@
 import { PageHeader } from '@/components/portal-shell'
 import { InvoiceBuilder } from '@/components/invoice-builder'
 import { InvoiceHistory } from '@/components/invoice-history'
+import { ClientManager } from '@/components/client-manager'
 import { createClient } from '@/lib/supabase/server'
 import type { Client } from '@/lib/supabase/database.types'
 
@@ -13,5 +14,5 @@ export default async function InvoicesPage() {
     supabase.from('invoices').select('*').order('created_at', { ascending: false })
   ])
   const clients = (data ?? []) as Client[]
-  return <><PageHeader eyebrow="Finance" title="Invoices" description="Build client invoices and review invoice history with totals." /><main className="invoice-page"><InvoiceBuilder initialClients={clients} /><InvoiceHistory initialInvoices={(invoices ?? []) as InvoiceRecord[]} /></main></>
+  return <><PageHeader eyebrow="Clients & invoices" title="Clients and invoices" description="Save client details once, then create, print, and track their invoices here." /><main className="invoice-page"><ClientManager initialClients={clients} /><InvoiceBuilder initialClients={clients} /><InvoiceHistory initialInvoices={(invoices ?? []) as InvoiceRecord[]} /></main></>
 }

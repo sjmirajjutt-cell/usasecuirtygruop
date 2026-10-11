@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   const phone = String(body.phone ?? '').trim()
   const address = String(body.address ?? '').trim()
   const hourlyRate = Number(body.hourlyRate ?? 0)
+  const assignedLocationId = body.assignedLocationId ? String(body.assignedLocationId) : null
 
   if (!fullName || !email || password.length < 8 || !employeeId || !Number.isFinite(hourlyRate) || hourlyRate < 0) {
     return NextResponse.json({ error: 'Name, employee ID, email, password (8+ characters), and a valid hourly rate are required.' }, { status: 400 })
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
     phone: phone || null,
     address: address || null,
     hourly_rate: hourlyRate,
+    assigned_location_id: assignedLocationId,
     is_active: true
   }).eq('id', created.user.id)
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { Client } from '@/lib/supabase/database.types'
 
 type LineItem = { hours: string; description: string; rate: string }
@@ -10,6 +11,7 @@ const emptyItem = (): LineItem => ({ hours: '', description: '', rate: '' })
 const money = (value: number) => `$${value.toFixed(2)}`
 
 export function InvoiceBuilder({ initialClients }: Props) {
+  const router = useRouter()
   const [clients, setClients] = useState(initialClients)
   const [selectedId, setSelectedId] = useState('')
   const [client, setClient] = useState({ name: '', addressLine1: '', addressLine2: '', phone: '', email: '' })
@@ -20,6 +22,8 @@ export function InvoiceBuilder({ initialClients }: Props) {
   const [serviceDates, setServiceDates] = useState('')
   const [salesTax, setSalesTax] = useState('')
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     setClients(initialClients)
@@ -42,11 +46,52 @@ export function InvoiceBuilder({ initialClients }: Props) {
     setItems(current => current.map((item, itemIndex) => itemIndex === index ? { ...item, [key]: value } : item))
   }
 
+  async function saveInvoice() {
+    setError('')
+    setMessage('')
+    if (!selectedId) {
+      setError('Choose a saved client before saving this invoice.')
+      return
+    }
+    if (items.some(item => !item.description.trim() || item.hours === '' || item.rate === '')) {
+      setError('Complete the hours, description, and rate for each invoice line.')
+      return
+    }
+    setSaving(true)
+    try {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientId: selectedId,
+          invoiceNumber,
+          paymentTerms,
+          dueDate,
+          serviceDates,
+          salesTax,
+          items: items.map(item => ({ hours: Number(item.hours), description: item.description, rate: Number(item.rate) }))
+        })
+      })
+      const result = await response.json()
+      if (!response.ok) {
+        setError(result.error ?? 'Invoice could not be saved.')
+        return
+      }
+      setMessage(`Invoice ${result.invoice.invoice_number} saved and added to invoice history.`)
+      router.refresh()
+    } catch {
+      setError('Invoice could not be saved. Check your connection and try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return <section className="invoice-workspace">
-    <div className="invoice-toolbar no-print"><div><span className="section-kicker">Finance</span><h3>Create invoice</h3><p>Select a saved client and their details will be reused automatically.</p></div><button className="invoice-primary" onClick={() => window.print()}>Download / Print PDF</button></div>
+    <div className="invoice-toolbar no-print"><div><span className="section-kicker">Invoice</span><h3>Create invoice</h3><p>Select a saved client and their details will be reused automatically.</p></div><div className="flex flex-wrap gap-2"><button disabled={saving} className="invoice-primary" onClick={() => void saveInvoice()}>{saving ? 'Saving…' : 'Save invoice'}</button><button className="invoice-secondary" onClick={() => window.print()}>Print / PDF</button></div></div>
+    {error && <p role="alert" className="invoice-message no-print">{error}</p>}
     <div className="invoice-controls no-print"><label>Invoice number<input value={invoiceNumber} onChange={event => setInvoiceNumber(event.target.value)} /></label><label>Payment terms<input value={paymentTerms} onChange={event => setPaymentTerms(event.target.value)} /></label><label>Due date<input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} /></label></div>
     <div className="client-picker no-print"><div><label className="field-label">Saved client</label><select value={selectedId} onChange={event => selectClient(event.target.value)}><option value="">Choose a client</option>{clients.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div></div>
-    {message && <p className="invoice-message no-print">{message}</p>}
+    {message && <p role="status" className="invoice-message no-print">{message}</p>}
 
     <article className="invoice-sheet print-sheet"><div className="invoice-company"><img src="/bizzark/assets/logo/usasecuirtygrouplogo.png" alt="USA Security Logo" /><div><strong>USA SECURITY & PROTECTION GROUP LLC</strong><span>2754 W Oakland Park Blvd<br />Fort Lauderdale, FL 33311</span><span>usacurityprogroupllc@gmail.com</span><span>954-477-1088</span></div><div className="invoice-meta"><span>Date: {new Date().toLocaleDateString('en-US')}</span><span>INVOICE # {invoiceNumber || '—'}</span></div></div><div className="invoice-client"><div><strong>INVOICE TO</strong><b>{client.name || 'Select a saved client'}</b><span>{client.addressLine1}</span><span>{client.addressLine2}</span><span>{client.phone}</span><span>{client.email}</span></div><div className="invoice-term"><b>Payment Terms</b><span>{paymentTerms || '—'}</span><b>Due Date</b><span>{dueDate || '—'}</span></div></div><div className="service-date"><b>Service Dates</b><span>{serviceDates || 'Enter service dates above or here'}</span><input className="no-print" placeholder="10/3/21 - 10/9/21" value={serviceDates} onChange={event => setServiceDates(event.target.value)} /></div><table className="invoice-lines"><thead><tr><th>Hours</th><th>Description</th><th>Rate</th><th>Line Total</th><th className="no-print"> </th></tr></thead><tbody>{items.map((item, index) => <tr key={index}><td><input type="number" min="0" step="any" value={item.hours} onChange={event => updateItem(index, 'hours', event.target.value)} /></td><td><input value={item.description} onChange={event => updateItem(index, 'description', event.target.value)} placeholder="Security services" /></td><td><input type="number" min="0" step="any" value={item.rate} onChange={event => updateItem(index, 'rate', event.target.value)} /></td><td>{money((Number(item.hours) || 0) * (Number(item.rate) || 0))}</td><td className="no-print"><button className="remove-line" onClick={() => setItems(current => current.filter((_, itemIndex) => itemIndex !== index))}>×</button></td></tr>)}</tbody></table><button className="invoice-secondary no-print" onClick={() => setItems(current => [...current, emptyItem()])}>+ Add line item</button><div className="invoice-totals"><div><span>Subtotal</span><b>{money(totals.subtotal)}</b><label>Sales tax <input type="number" min="0" step="any" value={salesTax} onChange={event => setSalesTax(event.target.value)} /></label><strong>Total <em>{money(totals.total)}</em></strong></div></div></article>
   </section>

@@ -1,5 +1,5 @@
 import { PageHeader } from '@/components/portal-shell'
-import { AttendanceHistory } from '@/components/attendance-history'
+import { AttendanceManager } from '@/components/attendance-manager'
 import { createClient } from '@/lib/supabase/server'
 import type { Attendance, Profile, WorkLocation } from '@/lib/supabase/database.types'
 
@@ -14,12 +14,12 @@ export default async function AttendancePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Operations"
+        eyebrow="Step 2 of 3"
         title="Attendance"
-        description="Track check-ins, check-outs, and real-time shift records for the team."
+        description="Mark employees present, absent, or half day. Hours and payout estimates update automatically."
       />
       <section className="dashboard-content">
-        <AttendanceHistory rows={(attendance ?? []) as Attendance[]} employees={(employees ?? []) as Profile[]} locations={(locations ?? []) as WorkLocation[]} />
+        <AttendanceManager initialRows={(attendance ?? []) as Attendance[]} employees={(employees ?? []) as Profile[]} locations={(locations ?? []) as WorkLocation[]} />
       </section>
     </>
   )

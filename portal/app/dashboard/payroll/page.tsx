@@ -12,5 +12,5 @@ export default async function PayrollPage() {
     supabase.from('attendance').select('*').order('check_in', { ascending: false }).limit(1000),
     supabase.from('payroll_payments').select('*').order('paid_at', { ascending: false })
   ])
-  return <><PageHeader eyebrow="Finance" title="Payroll" description="Review live employee payouts, mark payroll paid, and keep payment history." /><section className="dashboard-content"><PayrollManager employees={(employees ?? []) as Profile[]} attendance={(attendance ?? []) as Attendance[]} payments={(payments ?? []) as Payment[]} /></section></>
+  return <><PageHeader eyebrow="Step 3 of 3" title="Payout" description="See each employee’s hours and payout for a day, week, or month. Mark payouts when paid." /><section className="dashboard-content"><PayrollManager employees={(employees ?? []) as Profile[]} attendance={(attendance ?? []) as Attendance[]} payments={(payments ?? []) as Payment[]} /></section></>
 }
