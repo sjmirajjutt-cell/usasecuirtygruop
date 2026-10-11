@@ -2,24 +2,57 @@
 
 import { FormEvent, useState } from 'react'
 import type { Profile, WorkLocation } from '@/lib/supabase/database.types'
+import FreeMapPicker from '@/components/FreeMapPicker'
+
+type MapSelection = { lat: number; lng: number; address: string; locationName?: string }
 
 export function EmployeeManagerSimple({ initialEmployees, locations }: { initialEmployees: Profile[]; locations: WorkLocation[] }) {
   const [employees, setEmployees] = useState(initialEmployees)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [locationName, setLocationName] = useState('')
+  const [mapSelection, setMapSelection] = useState<MapSelection | null>(null)
+  const savedLocation = locations.find(location => location.location_name.trim().toLowerCase() === locationName.trim().toLowerCase())
+  const savedMapLocation = savedLocation?.latitude !== null && savedLocation?.latitude !== undefined
+    && savedLocation.longitude !== null && savedLocation.longitude !== undefined
+    ? {
+        lat: savedLocation.latitude,
+        lng: savedLocation.longitude,
+        address: savedLocation.address,
+        locationName: savedLocation.location_name
+      }
+    : null
 
   async function createEmployee(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setLoading(true)
     setError('')
     setMessage('')
+    const normalizedLocationName = locationName.trim()
+    const matchingLocation = locations.find(location => location.location_name.trim().toLowerCase() === normalizedLocationName.toLowerCase())
+    if (normalizedLocationName && !matchingLocation && !mapSelection) {
+      setError('Select the work site on the map before adding this employee.')
+      return
+    }
+
+    setLoading(true)
     const form = new FormData(event.currentTarget)
     try {
       const response = await fetch('/api/employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(Object.fromEntries(form))
+        body: JSON.stringify({
+          ...Object.fromEntries(form),
+          assignedLocationId: matchingLocation?.id ?? null,
+          newLocation: normalizedLocationName && !matchingLocation && mapSelection
+            ? {
+                locationName: normalizedLocationName,
+                address: mapSelection.address,
+                latitude: mapSelection.lat,
+                longitude: mapSelection.lng
+              }
+            : null
+        })
       })
       const result = await response.json()
       if (!response.ok) {
@@ -37,11 +70,11 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
 
   const locationNames = new Map(locations.map(location => [location.id, location.location_name]))
 
-  return <div className="grid gap-5 xl:grid-cols-[minmax(300px,.75fr)_minmax(0,1.25fr)]">
+  return <div className="space-y-5">
     <section className="panel p-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <span className="section-kicker">Step 2</span>
+          <span className="section-kicker">Step 1</span>
           <h3 className="mt-2 text-xl font-bold tracking-[-0.04em] text-[#12263f]">Add employee</h3>
         </div>
         <div className="rounded-full bg-[#edf6ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#4b98cf]">
@@ -49,18 +82,14 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl bg-slate-50 p-3">
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Employees</p>
           <p className="mt-2 text-xl font-bold text-slate-900">{employees.length}</p>
         </div>
         <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Locations</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Work locations</p>
           <p className="mt-2 text-xl font-bold text-slate-900">{locations.length}</p>
-        </div>
-        <div className="rounded-2xl bg-slate-50 p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Login ready</p>
-          <p className="mt-2 text-xl font-bold text-slate-900">{employees.length > 0 ? 'Yes' : 'Soon'}</p>
         </div>
       </div>
 
@@ -80,12 +109,34 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
           <label className="block text-sm font-semibold text-slate-700">Hourly rate ($)
             <input name="hourlyRate" required min="0" step="0.01" type="number" defaultValue="0" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:bg-white focus:ring-4 focus:ring-[#4b98cf]/10" />
           </label>
-          <label className="block text-sm font-semibold text-slate-700">Assigned location
-            <select name="assignedLocationId" defaultValue="" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10">
-              <option value="">No location assigned</option>
-              {locations.map(location => <option key={location.id} value={location.id}>{location.location_name}</option>)}
-            </select>
+          <label className="block text-sm font-semibold text-slate-700">Work location
+            <input
+              value={locationName}
+              onChange={event => {
+                setLocationName(event.target.value)
+                const nextSavedLocation = locations.find(location => location.location_name.trim().toLowerCase() === event.target.value.trim().toLowerCase())
+                setMapSelection(nextSavedLocation?.latitude !== null && nextSavedLocation?.latitude !== undefined
+                  && nextSavedLocation.longitude !== null && nextSavedLocation.longitude !== undefined
+                  ? { lat: nextSavedLocation.latitude, lng: nextSavedLocation.longitude, address: nextSavedLocation.address, locationName: nextSavedLocation.location_name }
+                  : null)
+              }}
+              list="employee-work-locations"
+              placeholder="Type or choose a location"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:bg-white focus:ring-4 focus:ring-[#4b98cf]/10"
+            />
+            <datalist id="employee-work-locations">
+              {locations.map(location => <option key={location.id} value={location.location_name} />)}
+            </datalist>
           </label>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-700">Verify the location on the map</p>
+          <p className="mt-1 text-xs text-slate-500">Search for the address or move the pin to the exact work site.</p>
+          <div className="mt-3">
+            <FreeMapPicker onLocationSelect={setMapSelection} initialLocation={savedMapLocation} />
+          </div>
+          {mapSelection && <p className="mt-2 rounded-xl bg-white p-3 text-xs text-slate-600"><strong>Map point selected:</strong> {mapSelection.address}</p>}
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -101,7 +152,7 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
           <p className="mt-2 text-xs text-slate-500">Required so the employee can sign in to their staff account.</p>
         </div>
 
-        {locations.length === 0 && <span className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">No locations are set up yet. <a href="/dashboard/locations" className="font-semibold underline">Add a location</a> first or leave this empty for now.</span>}
+        {locationName.trim() && !locations.some(location => location.location_name.trim().toLowerCase() === locationName.trim().toLowerCase()) && !mapSelection && <span className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Choose this new work location on the map to save its GPS point.</span>}
 
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}

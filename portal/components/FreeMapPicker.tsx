@@ -32,11 +32,18 @@ function featureToSelection(feature: MapboxFeature, fallbackQuery: string): Loca
   return { lat, lng, address: feature.place_name || feature.text || fallbackQuery, locationName: feature.text || fallbackQuery }
 }
 
-export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: (data: LocationSelection) => void }) {
+export default function FreeMapPicker({
+  onLocationSelect,
+  initialLocation = null
+}: {
+  onLocationSelect: (data: LocationSelection) => void
+  initialLocation?: LocationSelection | null
+}) {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<Map | null>(null)
   const markerRef = useRef<Marker | null>(null)
   const callbackRef = useRef(onLocationSelect)
+  const initialLocationRef = useRef(initialLocation)
   const autocompleteRequestRef = useRef(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [address, setAddress] = useState('')
@@ -49,6 +56,19 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
   useEffect(() => {
     callbackRef.current = onLocationSelect
   }, [onLocationSelect])
+
+  useEffect(() => {
+    initialLocationRef.current = initialLocation
+    if (!mapRef.current) return
+
+    if (initialLocation) {
+      void selectCoordinates(initialLocation, initialLocation)
+    } else {
+      setAddress('')
+      markerRef.current?.setLngLat([DEFAULT_POSITION.lng, DEFAULT_POSITION.lat])
+      mapRef.current.flyTo({ center: [DEFAULT_POSITION.lng, DEFAULT_POSITION.lat], zoom: 13, essential: true })
+    }
+  }, [initialLocation?.lat, initialLocation?.lng, initialLocation?.address])
 
   async function reverseGeocode(coordinates: Coordinates, locationName?: string) {
     const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${coordinates.lng},${coordinates.lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`)
@@ -118,7 +138,10 @@ export default function FreeMapPicker({ onLocationSelect }: { onLocationSelect: 
       })
       mapRef.current = map
       markerRef.current = marker
-      map.on('load', () => { void selectCoordinates(DEFAULT_POSITION) })
+      map.on('load', () => {
+        const location = initialLocationRef.current
+        if (location) void selectCoordinates(location, location)
+      })
     }
     void initializeMap()
     return () => {

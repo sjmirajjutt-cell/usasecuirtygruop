@@ -4,35 +4,27 @@ import { PageHeader } from '@/components/portal-shell'
 const steps = [
   {
     number: '1',
-    href: '/dashboard/locations',
-    title: 'Add location',
-    description: 'Add the work site before assigning employees.',
-    icon: 'location_on',
+    href: '/dashboard/employees',
+    title: 'Add employee',
+    description: 'Add staff and type or verify their work location.',
+    icon: 'person_add',
     tone: 'blue'
   },
   {
     number: '2',
-    href: '/dashboard/employees',
-    title: 'Add employee',
-    description: 'Create new staff and assign duties.',
-    icon: 'person_add',
-    tone: 'teal'
-  },
-  {
-    number: '3',
     href: '/dashboard/attendance',
     title: 'Attendance',
     description: 'Check in staff and track daily shifts.',
     icon: 'event_available',
-    tone: 'amber'
+    tone: 'teal'
   },
   {
-    number: '4',
+    number: '3',
     href: '/dashboard/payroll',
     title: 'Payroll',
     description: 'Review hours and employee payouts.',
     icon: 'payments',
-    tone: 'blue'
+    tone: 'amber'
   }
 ]
 
@@ -42,7 +34,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Home"
         title="Daily operations"
-        description="Add a work location first, then follow the steps to manage your team."
+        description="Add your team, record attendance, and review payroll."
       />
 
       <section className="dashboard-content">
@@ -50,11 +42,11 @@ export default function DashboardPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-200">Operations portal</p>
           <h2 className="mt-3 text-3xl font-bold tracking-[-0.05em] sm:text-4xl">Welcome back</h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-200 sm:text-base">
-            Add your work location first. Then add employees, record attendance, and review payroll.
+            Add an employee and enter their work location. You can verify a new location on the map as you add them.
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           {steps.map((step) => (
             <Link
               key={step.number}
@@ -85,7 +77,7 @@ export default function DashboardPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#4b98cf]">Simple flow</p>
           <h3 className="mt-2 text-2xl font-bold tracking-[-0.04em] text-slate-900">Keep it easy for the team</h3>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Create a location first so it appears in the employee assignment list. Then continue with attendance and payroll.
+            Enter an employee’s work location while adding them. New locations are saved for GPS attendance and can be reused for other employees.
           </p>
         </div>
       </section>
