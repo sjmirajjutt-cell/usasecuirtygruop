@@ -10,13 +10,7 @@ const mainNavigation = [
   { href: '/dashboard/employees', label: '1. Add employee', icon: 'person_add' },
   { href: '/dashboard/attendance', label: '2. Attendance', icon: 'event_available' },
   { href: '/dashboard/payroll', label: '3. Payroll', icon: 'payments' },
-  { href: '/dashboard/invoices', label: 'Invoices', icon: 'receipt' }
-]
-
-const moreNavigation = [
-  { href: '/dashboard/worksheets', label: 'Worksheets', icon: 'description' },
-  { href: '/dashboard/locations', label: 'Locations', icon: 'location_on' },
-  { href: '/dashboard/settings', label: 'Settings', icon: 'settings' }
+  { href: '/dashboard/invoices', label: 'Clients & invoices', icon: 'receipt' }
 ]
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
@@ -121,27 +115,9 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <p className="sidebar-label">More tools</p>
-        <nav aria-label="More tools" className="space-y-1">
-          {moreNavigation.map(item => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={`sidebar-link ${active ? 'sidebar-link-active' : ''}`}
-              >
-                <span className="material-icons">{item.icon}</span>
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-
         <p className="sidebar-label">Account</p>
-        <button type="button" onClick={() => void signOut()} disabled={isSigningOut} className="sidebar-link w-full text-left disabled:cursor-wait disabled:opacity-60">
-          <span className="material-icons">logout</span>
+        <button type="button" onClick={() => void signOut()} disabled={isSigningOut} className="sidebar-link w-full justify-start whitespace-nowrap text-left disabled:cursor-wait disabled:opacity-60">
+          <span className="material-icons shrink-0">logout</span>
           {isSigningOut ? 'Signing out…' : 'Sign out'}
         </button>
         {signOutError && <p role="alert" className="px-3 pt-2 text-xs leading-5 text-red-200">{signOutError}</p>}
