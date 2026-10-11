@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import type { Attendance, Profile } from '@/lib/supabase/database.types'
 
 type Period = 'daily' | 'weekly' | 'monthly'
-type PayrollRow = { employee: Profile; hours: number; amount: number }
+type PayrollRow = { employee: Profile; shifts: Attendance[]; hours: number; amount: number }
 
 const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
@@ -23,14 +23,18 @@ function getPeriodRange(period: Period, referenceDate = new Date()) {
 
 export function PayrollManager({ employees, attendance }: { employees: Profile[]; attendance: Attendance[] }) {
   const [period, setPeriod] = useState<Period>('weekly')
+  const [shiftRecords, setShiftRecords] = useState(attendance)
+  const [savingEmployeeId, setSavingEmployeeId] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
   const range = getPeriodRange(period)
 
   const rows = useMemo<PayrollRow[]>(() => employees.map(employee => {
-    const shifts = attendance.filter(row => {
+    const shifts = shiftRecords.filter(row => {
       const shiftDate = row.check_in.slice(0, 10)
       return row.employee_id === employee.id
         && row.attendance_status !== 'absent'
-        && row.total_hours !== null
+        && Number(row.total_hours ?? 0) > 0
         && shiftDate >= range.start
         && shiftDate <= range.end
     })
@@ -38,13 +42,53 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
 
     return {
       employee,
+      shifts,
       hours,
       amount: hours * Number(employee.hourly_rate ?? 0)
     }
-  }), [employees, attendance, range.start, range.end])
+  }), [employees, shiftRecords, range.start, range.end])
 
   const totalHours = rows.reduce((total, row) => total + row.hours, 0)
   const totalPayout = rows.reduce((total, row) => total + row.amount, 0)
+
+  async function updatePaymentStatus(row: PayrollRow) {
+    const isPaid = row.shifts.length > 0 && row.shifts.every(shift => shift.is_paid)
+    const unpaidShifts = row.shifts.filter(shift => !shift.is_paid)
+    if (!row.shifts.length) return
+    setSavingEmployeeId(row.employee.id)
+    setMessage('')
+    setError('')
+
+    try {
+      const response = await fetch('/api/payroll', {
+        method: isPaid ? 'PATCH' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isPaid
+          ? { employeeId: row.employee.id, periodStart: range.start, periodEnd: range.end }
+          : {
+              employeeId: row.employee.id,
+              periodStart: range.start,
+              periodEnd: range.end,
+              totalHours: unpaidShifts.reduce((total, shift) => total + Number(shift.total_hours ?? 0), 0),
+              grossAmount: unpaidShifts.reduce((total, shift) => total + Number(shift.total_hours ?? 0) * Number(row.employee.hourly_rate ?? 0), 0),
+              attendanceIds: unpaidShifts.map(shift => shift.id)
+            })
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error ?? 'Unable to update payroll status.')
+
+      const updatedAt = new Date().toISOString()
+      const updatedIds = new Set(isPaid ? row.shifts.map(shift => shift.id) : unpaidShifts.map(shift => shift.id))
+      setShiftRecords(current => current.map(shift => updatedIds.has(shift.id)
+        ? { ...shift, is_paid: !isPaid, paid_at: isPaid ? null : updatedAt }
+        : shift))
+      setMessage(`${row.employee.full_name} marked ${isPaid ? 'unpaid' : 'paid'}.`)
+    } catch (statusError) {
+      setError(statusError instanceof Error ? statusError.message : 'Unable to update payroll status.')
+    } finally {
+      setSavingEmployeeId(null)
+    }
+  }
 
   const periods: { value: Period; label: string }[] = [
     { value: 'daily', label: 'Daily' },
@@ -60,6 +104,8 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
           <p className="mt-1 text-sm font-normal text-slate-500">Payout is calculated from recorded shift hours and each employee’s hourly rate.</p>
         </div>
       </div>
+
+      {(message || error) && <p role={error ? 'alert' : 'status'} className={`mx-5 mt-4 rounded-xl p-3 text-sm ${error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{error || message}</p>}
 
       <div className="flex flex-wrap gap-2 border-b border-slate-100 px-5 pb-4">
         {periods.map(option => (
@@ -101,10 +147,15 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
               <th className="px-6 py-3">Shift hours</th>
               <th className="px-6 py-3">Hourly rate</th>
               <th className="px-6 py-3">Payout</th>
+              <th className="px-6 py-3">Payment status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map(row => (
+            {rows.map(row => {
+              const paidCount = row.shifts.filter(shift => shift.is_paid).length
+              const isPaid = row.shifts.length > 0 && paidCount === row.shifts.length
+              const isPartiallyPaid = paidCount > 0 && !isPaid
+              return (
               <tr key={row.employee.id}>
                 <td className="px-6 py-4 font-semibold text-[#12263f]">
                   {row.employee.full_name || 'Unknown employee'}
@@ -113,8 +164,18 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
                 <td className="px-6 py-4">{row.hours.toFixed(2)}</td>
                 <td className="px-6 py-4">${Number(row.employee.hourly_rate || 0).toFixed(2)}</td>
                 <td className="px-6 py-4 font-semibold text-[#12263f]">${row.amount.toFixed(2)}</td>
+                <td className="px-6 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isPaid ? 'bg-emerald-50 text-emerald-700' : isPartiallyPaid ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {isPaid ? 'Paid' : isPartiallyPaid ? 'Partially paid' : 'Unpaid'}
+                    </span>
+                    {row.shifts.length > 0 && <button type="button" disabled={savingEmployeeId !== null} onClick={() => updatePaymentStatus(row)} className={`rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${isPaid ? 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'bg-[#12263f] text-white hover:bg-[#1b3c5e]'}`}>
+                      {savingEmployeeId === row.employee.id ? 'Updating…' : isPaid ? 'Mark unpaid' : isPartiallyPaid ? 'Mark remaining paid' : 'Mark as paid'}
+                    </button>}
+                  </div>
+                </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
         {rows.length === 0 && <p className="p-8 text-center text-sm text-slate-500">Add an employee to see shift hours and payout.</p>}

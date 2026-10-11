@@ -50,3 +50,36 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ payment: data, paidAt })
 }
+
+export async function PATCH(request: Request) {
+  const auth = await requireAdmin()
+  if ('response' in auth) return auth.response
+
+  const body = await request.json().catch(() => ({}))
+  const employeeId = String(body.employeeId ?? '')
+  const periodStart = String(body.periodStart ?? '')
+  const periodEnd = String(body.periodEnd ?? '')
+  if (!employeeId || !/^\d{4}-\d{2}-\d{2}$/.test(periodStart) || !/^\d{4}-\d{2}-\d{2}$/.test(periodEnd) || periodEnd < periodStart) {
+    return NextResponse.json({ error: 'Employee and a valid payroll period are required.' }, { status: 400 })
+  }
+
+  const start = new Date(`${periodStart}T00:00:00.000Z`)
+  const end = new Date(`${periodEnd}T00:00:00.000Z`)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start.toISOString().slice(0, 10) !== periodStart || end.toISOString().slice(0, 10) !== periodEnd) {
+    return NextResponse.json({ error: 'Enter a real payroll date range.' }, { status: 400 })
+  }
+  const nextDay = new Date(end)
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+
+  const admin = createAdminClient()
+  const { error } = await admin.from('attendance')
+    .update({ is_paid: false, paid_at: null })
+    .eq('employee_id', employeeId)
+    .gte('check_in', start.toISOString())
+    .lt('check_in', nextDay.toISOString())
+    .neq('attendance_status', 'absent')
+    .gt('total_hours', 0)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}
