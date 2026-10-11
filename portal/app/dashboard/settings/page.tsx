@@ -1,5 +1,4 @@
 import { PageHeader } from '@/components/portal-shell'
-import { PasswordResetRequests } from '@/components/password-reset-requests'
 
 export default function SettingsPage() {
   return <>
@@ -24,8 +23,6 @@ export default function SettingsPage() {
           </div>
         </section>
       </div>
-
-      <PasswordResetRequests />
     </section>
   </>
 }

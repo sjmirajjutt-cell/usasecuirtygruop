@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Profile } from '@/lib/supabase/database.types'
@@ -12,10 +13,8 @@ export async function POST(request: Request) {
   const adminProfile = profileData as Pick<Profile, 'role'> | null
   if (adminProfile?.role !== 'admin') return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
 
-  const body = await request.json()
+  const body = await request.json().catch(() => ({}))
   const fullName = String(body.fullName ?? '').trim()
-  const email = String(body.email ?? '').trim().toLowerCase()
-  const password = String(body.password ?? '')
   const employeeId = String(body.employeeId ?? '').trim()
   const phone = String(body.phone ?? '').trim()
   const address = String(body.address ?? '').trim()
@@ -27,8 +26,8 @@ export async function POST(request: Request) {
   const newLocationLatitude = Number(newLocation?.latitude)
   const newLocationLongitude = Number(newLocation?.longitude)
 
-  if (!fullName || !email || password.length < 8 || !employeeId || !Number.isFinite(hourlyRate) || hourlyRate < 0) {
-    return NextResponse.json({ error: 'Name, employee ID, email, password (8+ characters), and a valid hourly rate are required.' }, { status: 400 })
+  if (!fullName || !employeeId || !Number.isFinite(hourlyRate) || hourlyRate < 0) {
+    return NextResponse.json({ error: 'Name, employee ID, and a valid hourly rate are required.' }, { status: 400 })
   }
 
   if (assignedLocationId && newLocation) {
@@ -58,14 +57,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const { data: created, error: createError } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName }
-  })
-  if (createError || !created.user) return NextResponse.json({ error: createError?.message ?? 'Unable to create employee' }, { status: 400 })
-
   let resolvedLocationId = assignedLocationId
   let createdLocationId: string | null = null
 
@@ -78,9 +69,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (lookupError) {
-      const { error: cleanupError } = await admin.auth.admin.deleteUser(created.user.id)
-      const cleanupMessage = cleanupError ? ` Employee cleanup also failed: ${cleanupError.message}` : ''
-      return NextResponse.json({ error: `${lookupError.message}${cleanupMessage}` }, { status: 400 })
+      return NextResponse.json({ error: lookupError.message }, { status: 400 })
     }
 
     if (existingLocation) {
@@ -100,9 +89,7 @@ export async function POST(request: Request) {
         .single()
 
       if (locationInsertError || !insertedLocation) {
-        const { error: cleanupError } = await admin.auth.admin.deleteUser(created.user.id)
-        const cleanupMessage = cleanupError ? ` Employee cleanup also failed: ${cleanupError.message}` : ''
-        return NextResponse.json({ error: `${locationInsertError?.message ?? 'Work location could not be saved.'}${cleanupMessage}` }, { status: 400 })
+        return NextResponse.json({ error: locationInsertError?.message ?? 'Work location could not be saved.' }, { status: 400 })
       }
 
       resolvedLocationId = insertedLocation.id
@@ -110,7 +97,9 @@ export async function POST(request: Request) {
     }
   }
 
-  const { error: profileError } = await admin.from('profiles').update({
+  const employeeProfileId = randomUUID()
+  const { error: profileError } = await admin.from('profiles').insert({
+    id: employeeProfileId,
     full_name: fullName,
     role: 'officer',
     employee_id: employeeId,
@@ -119,18 +108,16 @@ export async function POST(request: Request) {
     hourly_rate: hourlyRate,
     assigned_location_id: resolvedLocationId,
     is_active: true
-  }).eq('id', created.user.id)
+  })
 
   if (profileError) {
-    const cleanupErrors: string[] = []
+    let errorMessage = profileError.message
     if (createdLocationId) {
       const { error: locationCleanupError } = await admin.from('work_locations').delete().eq('id', createdLocationId)
-      if (locationCleanupError) cleanupErrors.push(`Work location cleanup failed: ${locationCleanupError.message}`)
+      if (locationCleanupError) errorMessage = `${errorMessage} Work location cleanup failed: ${locationCleanupError.message}`
     }
-    const { error: userCleanupError } = await admin.auth.admin.deleteUser(created.user.id)
-    if (userCleanupError) cleanupErrors.push(`Employee cleanup failed: ${userCleanupError.message}`)
-    return NextResponse.json({ error: [profileError.message, ...cleanupErrors].join(' ') }, { status: 400 })
+    return NextResponse.json({ error: errorMessage }, { status: 400 })
   }
 
-  return NextResponse.json({ id: created.user.id, employeeId, assignedLocationId: resolvedLocationId })
+  return NextResponse.json({ id: employeeProfileId, employeeId, assignedLocationId: resolvedLocationId })
 }

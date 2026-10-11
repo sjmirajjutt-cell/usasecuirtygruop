@@ -93,7 +93,7 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
         </div>
       </div>
 
-      <p className="mb-5 text-sm text-slate-500">Fill in the basic details and create their sign-in access.</p>
+      <p className="mb-5 text-sm text-slate-500">Enter the employee details, hourly rate, and work location.</p>
 
       <form onSubmit={createEmployee} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -137,19 +137,6 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
             <FreeMapPicker onLocationSelect={setMapSelection} initialLocation={savedMapLocation} />
           </div>
           {mapSelection && <p className="mt-2 rounded-xl bg-white p-3 text-xs text-slate-600"><strong>Map point selected:</strong> {mapSelection.address}</p>}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-sm font-semibold text-slate-700">Sign-in details</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-semibold text-slate-700">Login email
-              <input name="email" required type="email" autoComplete="email" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10" />
-            </label>
-            <label className="block text-sm font-semibold text-slate-700">Temporary password
-              <input name="password" required minLength={8} type="password" autoComplete="new-password" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10" />
-            </label>
-          </div>
-          <p className="mt-2 text-xs text-slate-500">Required so the employee can sign in to their staff account.</p>
         </div>
 
         {locationName.trim() && !locations.some(location => location.location_name.trim().toLowerCase() === locationName.trim().toLowerCase()) && !mapSelection && <span className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">Choose this new work location on the map to save its GPS point.</span>}

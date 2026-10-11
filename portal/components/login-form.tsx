@@ -25,7 +25,11 @@ export function LoginForm() {
       if (profile?.is_active === false) {
         await supabase.auth.signOut()
         setError('This employee account is inactive. Please contact the admin team.')
-      } else window.location.assign(profile?.role === 'officer' ? '/employee' : '/dashboard')
+      } else if (profile?.role === 'admin') window.location.assign('/dashboard')
+      else {
+        await supabase.auth.signOut()
+        setError('Employee sign-in is disabled. Please contact the administrator.')
+      }
     }
     setLoading(false)
   }

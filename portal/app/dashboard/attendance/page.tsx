@@ -16,7 +16,7 @@ export default async function AttendancePage() {
       <PageHeader
         eyebrow="Step 2 of 3"
         title="Attendance"
-        description="Mark employees present, absent, or half day. Hours and payout estimates update automatically."
+        description="Enter each employee’s shift hours. Payout estimates are calculated automatically."
       />
       <section className="dashboard-content">
         <AttendanceManager initialRows={(attendance ?? []) as Attendance[]} employees={(employees ?? []) as Profile[]} locations={(locations ?? []) as WorkLocation[]} />

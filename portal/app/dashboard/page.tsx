@@ -14,7 +14,7 @@ const steps = [
     number: '2',
     href: '/dashboard/attendance',
     title: 'Attendance',
-    description: 'Check in staff and track daily shifts.',
+    description: 'Enter staff shift hours and review estimated payouts.',
     icon: 'event_available',
     tone: 'teal'
   },
@@ -34,7 +34,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Home"
         title="Daily operations"
-        description="Add your team, record attendance, and review payroll."
+        description="Add your team, record shift hours, and review payroll."
       />
 
       <section className="dashboard-content">

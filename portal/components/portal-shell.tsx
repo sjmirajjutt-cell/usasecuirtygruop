@@ -7,9 +7,9 @@ import { createClient } from '@/lib/supabase/client'
 
 const mainNavigation = [
   { href: '/dashboard', label: 'Home', icon: 'home' },
-  { href: '/dashboard/employees', label: '1. Add employee', icon: 'person_add' },
-  { href: '/dashboard/attendance', label: '2. Attendance', icon: 'event_available' },
-  { href: '/dashboard/payroll', label: '3. Payroll', icon: 'payments' },
+  { href: '/dashboard/employees', label: 'Add employee', icon: 'person_add' },
+  { href: '/dashboard/attendance', label: 'Attendance', icon: 'event_available' },
+  { href: '/dashboard/payroll', label: 'Payroll', icon: 'payments' },
   { href: '/dashboard/invoices', label: 'Clients & invoices', icon: 'receipt' }
 ]
 

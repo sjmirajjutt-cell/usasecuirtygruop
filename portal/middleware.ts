@@ -27,10 +27,11 @@ export async function middleware(request: NextRequest) {
   if (user && (isDashboard || isEmployee)) {
     const { data: profile } = await supabase.from('profiles').select('role, is_active').eq('id', user.id).single()
     if (profile?.is_active === false) return NextResponse.redirect(new URL('/login', request.url))
-    if (isDashboard && profile?.role !== 'admin') return NextResponse.redirect(new URL('/employee', request.url))
+    if (isDashboard && profile?.role !== 'admin') return NextResponse.redirect(new URL('/login', request.url))
     if (isEmployee && profile?.role === 'admin') return NextResponse.redirect(new URL('/dashboard', request.url))
+    if (isEmployee && profile?.role !== 'admin') return NextResponse.redirect(new URL('/login', request.url))
   }
   return response
 }
 
-export const config = { matcher: ['/dashboard/:path*'] }
+export const config = { matcher: ['/dashboard/:path*', '/employee/:path*'] }
