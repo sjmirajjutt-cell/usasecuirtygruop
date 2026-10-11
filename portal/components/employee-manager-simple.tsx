@@ -39,41 +39,74 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
 
   return <div className="grid gap-5 xl:grid-cols-[minmax(300px,.75fr)_minmax(0,1.25fr)]">
     <section className="panel p-6">
-      <span className="section-kicker">Step 1</span>
-      <h3 className="mt-2 text-lg font-bold text-[#12263f]">Add an employee</h3>
-      <p className="mt-1 text-sm text-slate-500">Just the details needed to set up their work and pay.</p>
-      <form onSubmit={createEmployee} className="mt-5 space-y-4">
-        <label className="block text-sm font-semibold text-slate-700">Name
-          <input name="fullName" required autoComplete="name" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 font-normal" />
-        </label>
-        <label className="block text-sm font-semibold text-slate-700">Employee ID
-          <input name="employeeId" required placeholder="USSPG-001" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 font-normal" />
-        </label>
-        <label className="block text-sm font-semibold text-slate-700">Hourly rate ($)
-          <input name="hourlyRate" required min="0" step="0.01" type="number" defaultValue="0" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 font-normal" />
-        </label>
-        <label className="block text-sm font-semibold text-slate-700">Assigned location
-          <select name="assignedLocationId" defaultValue="" className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 font-normal">
-            <option value="">No location assigned</option>
-            {locations.map(location => <option key={location.id} value={location.id}>{location.location_name}</option>)}
-          </select>
-          {locations.length === 0 && <span className="mt-1 block text-xs font-normal text-amber-700">No locations are set up yet. <a href="/dashboard/locations" className="font-semibold underline">Add a location</a> first, or leave this unassigned for now.</span>}
-        </label>
-        <details open className="rounded-md border border-slate-200 p-3">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-700">Employee sign-in details</summary>
-          <div className="mt-3 space-y-3">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div>
+          <span className="section-kicker">Step 1</span>
+          <h3 className="mt-2 text-xl font-bold tracking-[-0.04em] text-[#12263f]">Add employee</h3>
+        </div>
+        <div className="rounded-full bg-[#edf6ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#4b98cf]">
+          {employees.length} staff
+        </div>
+      </div>
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Employees</p>
+          <p className="mt-2 text-xl font-bold text-slate-900">{employees.length}</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Locations</p>
+          <p className="mt-2 text-xl font-bold text-slate-900">{locations.length}</p>
+        </div>
+        <div className="rounded-2xl bg-slate-50 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Login ready</p>
+          <p className="mt-2 text-xl font-bold text-slate-900">{employees.length > 0 ? 'Yes' : 'Soon'}</p>
+        </div>
+      </div>
+
+      <p className="mb-5 text-sm text-slate-500">Fill in the basic details and create their sign-in access.</p>
+
+      <form onSubmit={createEmployee} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-slate-700">Name
+            <input name="fullName" required autoComplete="name" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:bg-white focus:ring-4 focus:ring-[#4b98cf]/10" />
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">Employee ID
+            <input name="employeeId" required placeholder="USSPG-001" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:bg-white focus:ring-4 focus:ring-[#4b98cf]/10" />
+          </label>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm font-semibold text-slate-700">Hourly rate ($)
+            <input name="hourlyRate" required min="0" step="0.01" type="number" defaultValue="0" className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:bg-white focus:ring-4 focus:ring-[#4b98cf]/10" />
+          </label>
+          <label className="block text-sm font-semibold text-slate-700">Assigned location
+            <select name="assignedLocationId" defaultValue="" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10">
+              <option value="">No location assigned</option>
+              {locations.map(location => <option key={location.id} value={location.id}>{location.location_name}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-sm font-semibold text-slate-700">Sign-in details</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="block text-sm font-semibold text-slate-700">Login email
-              <input name="email" required type="email" autoComplete="email" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 font-normal" />
+              <input name="email" required type="email" autoComplete="email" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10" />
             </label>
             <label className="block text-sm font-semibold text-slate-700">Temporary password
-              <input name="password" required minLength={8} type="password" autoComplete="new-password" className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 font-normal" />
+              <input name="password" required minLength={8} type="password" autoComplete="new-password" className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-normal outline-none transition focus:border-[#4b98cf] focus:ring-4 focus:ring-[#4b98cf]/10" />
             </label>
-            <p className="text-xs text-slate-500">Required so this employee can sign in to their staff account.</p>
           </div>
-        </details>
-        {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-        {message && <p role="status" className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
-        <button disabled={loading} className="w-full rounded-md bg-[#12263f] px-4 py-3 text-sm font-bold text-white disabled:opacity-60">
+          <p className="mt-2 text-xs text-slate-500">Required so the employee can sign in to their staff account.</p>
+        </div>
+
+        {locations.length === 0 && <span className="block rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">No locations are set up yet. <a href="/dashboard/locations" className="font-semibold underline">Add a location</a> first or leave this empty for now.</span>}
+
+        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+        {message && <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{message}</p>}
+
+        <button disabled={loading} className="w-full rounded-xl bg-[#12263f] px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#12263f]/15 transition hover:bg-[#0f1c2d] disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? 'Adding employee…' : 'Add employee'}
         </button>
       </form>

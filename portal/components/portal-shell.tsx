@@ -6,10 +6,11 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 const navigation = [
+  { href: '/dashboard', label: 'Home', icon: 'home' },
   { href: '/dashboard/employees', label: '1. Add employee', icon: 'person_add' },
   { href: '/dashboard/attendance', label: '2. Attendance', icon: 'event_available' },
-  { href: '/dashboard/payroll', label: '3. Payout', icon: 'payments' },
-  { href: '/dashboard/invoices', label: 'Clients & invoices', icon: 'receipt' }
+  { href: '/dashboard/payroll', label: '3. Payroll', icon: 'payments' },
+  { href: '/dashboard/invoices', label: 'Invoices', icon: 'receipt' }
 ]
 
 export function PortalShell({ children }: { children: React.ReactNode }) {
@@ -28,7 +29,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
   }, [pathname])
 
   return (
-      <div className="min-h-screen bg-[#f6f8fa] lg:flex">
+    <div className="min-h-screen bg-[#f6f8fa] lg:flex">
       <button
         type="button"
         aria-label="Toggle sidebar"
@@ -48,11 +49,11 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <div className="brand-mark"><img src="/bizzark/assets/logo/usasecuirtygrouplogo.png" alt="USA Security Group" /></div>
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#8ed4c8]">USSPG</p>
-            <h1 className="mt-1 text-sm font-bold leading-tight">USA Security & Protection Group</h1>
+            <h1 className="mt-1 text-sm font-bold leading-tight">USA Security</h1>
           </div>
         </div>
 
-        <p className="sidebar-label">Workspace</p>
+        <p className="sidebar-label">Main menu</p>
         <nav className="space-y-1">
           {navigation.map(item => {
             const active = item.href === '/dashboard' ? pathname === item.href : pathname.startsWith(item.href)
@@ -75,14 +76,14 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
           <div className="avatar">VC</div>
           <div>
             <p className="text-sm font-semibold">Vince Charles</p>
-            <p className="text-xs text-white/50">Administrator</p>
+            <p className="text-xs text-white/50">Admin</p>
           </div>
           <span className="material-icons ml-auto text-white/40">more_horiz</span>
         </div>
       </aside>
 
       <main className="min-w-0 flex-1 bg-[#f6f8fa]">{children}</main>
-      </div>
+    </div>
   )
 }
 
@@ -94,7 +95,6 @@ export function PageHeader({ eyebrow, title, description }: { eyebrow: string; t
         <h2>{title}</h2>
         <p>{description}</p>
       </div>
-
     </header>
   )
 }
