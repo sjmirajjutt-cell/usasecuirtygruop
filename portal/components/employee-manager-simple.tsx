@@ -41,7 +41,7 @@ export function EmployeeManagerSimple({ initialEmployees, locations }: { initial
     <section className="panel p-6">
       <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <span className="section-kicker">Step 1</span>
+          <span className="section-kicker">Step 2</span>
           <h3 className="mt-2 text-xl font-bold tracking-[-0.04em] text-[#12263f]">Add employee</h3>
         </div>
         <div className="rounded-full bg-[#edf6ff] px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-[#4b98cf]">

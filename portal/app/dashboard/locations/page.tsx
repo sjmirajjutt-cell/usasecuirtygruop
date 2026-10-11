@@ -11,5 +11,5 @@ export default async function LocationsPage() {
     supabase.from('clients').select('*').order('name')
   ])
 
-  return <><PageHeader eyebrow="Operations" title="Locations" description="Create map-based work sites, connect them to clients, and assign guards." /><section className="dashboard-content"><LocationManager initialEmployees={(employees ?? []) as Profile[]} initialLocations={(locations ?? []) as WorkLocation[]} initialClients={(clients ?? []) as Client[]} /></section></>
+  return <><PageHeader eyebrow="Step 1 of 4" title="Add location" description="Add the work site first. It will then be available when you add or assign employees." /><section className="dashboard-content"><LocationManager initialEmployees={(employees ?? []) as Profile[]} initialLocations={(locations ?? []) as WorkLocation[]} initialClients={(clients ?? []) as Client[]} /></section></>
 }

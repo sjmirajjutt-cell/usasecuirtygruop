@@ -14,7 +14,7 @@ export default async function AttendancePage() {
   return (
     <>
       <PageHeader
-        eyebrow="Step 2 of 3"
+        eyebrow="Step 3 of 4"
         title="Attendance"
         description="Mark employees present, absent, or half day. Hours and payout estimates update automatically."
       />

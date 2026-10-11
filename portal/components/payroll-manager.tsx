@@ -140,7 +140,7 @@ export function PayrollManager({ employees, attendance, payments }: { employees:
     <section className="panel overflow-hidden">
       <div className="panel-heading">
         <div>
-          <span className="section-kicker">Step 3</span>
+          <span className="section-kicker">Step 4</span>
           <h3>Payroll</h3>
           <p className="mt-1 text-sm font-normal text-slate-500">Review hours and mark each employee paid.</p>
         </div>

@@ -4,27 +4,35 @@ import { PageHeader } from '@/components/portal-shell'
 const steps = [
   {
     number: '1',
-    href: '/dashboard/employees',
-    title: 'Add employee',
-    description: 'Create new staff and assign duties.',
-    icon: 'person_add',
+    href: '/dashboard/locations',
+    title: 'Add location',
+    description: 'Add the work site before assigning employees.',
+    icon: 'location_on',
     tone: 'blue'
   },
   {
     number: '2',
-    href: '/dashboard/attendance',
-    title: 'Attendance',
-    description: 'Check in staff and track daily shifts.',
-    icon: 'event_available',
+    href: '/dashboard/employees',
+    title: 'Add employee',
+    description: 'Create new staff and assign duties.',
+    icon: 'person_add',
     tone: 'teal'
   },
   {
     number: '3',
-    href: '/dashboard/payroll',
-    title: 'Payroll & invoices',
-    description: 'Review payouts and client billing.',
-    icon: 'payments',
+    href: '/dashboard/attendance',
+    title: 'Attendance',
+    description: 'Check in staff and track daily shifts.',
+    icon: 'event_available',
     tone: 'amber'
+  },
+  {
+    number: '4',
+    href: '/dashboard/payroll',
+    title: 'Payroll',
+    description: 'Review hours and employee payouts.',
+    icon: 'payments',
+    tone: 'blue'
   }
 ]
 
@@ -34,7 +42,7 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow="Home"
         title="Daily operations"
-        description="Do the work in order and keep everything simple."
+        description="Add a work location first, then follow the steps to manage your team."
       />
 
       <section className="dashboard-content">
@@ -42,11 +50,11 @@ export default function DashboardPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-sky-200">Operations portal</p>
           <h2 className="mt-3 text-3xl font-bold tracking-[-0.05em] sm:text-4xl">Welcome back</h2>
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-200 sm:text-base">
-            Start with your team, log attendance, then finish with payroll and invoices.
+            Add your work location first. Then add employees, record attendance, and review payroll.
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {steps.map((step) => (
             <Link
               key={step.number}
@@ -77,7 +85,7 @@ export default function DashboardPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#4b98cf]">Simple flow</p>
           <h3 className="mt-2 text-2xl font-bold tracking-[-0.04em] text-slate-900">Keep it easy for the team</h3>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Add employees, check attendance, then handle pay and invoices. This keeps the work clear and reduces confusion for day-to-day operations.
+            Create a location first so it appears in the employee assignment list. Then continue with attendance and payroll.
           </p>
         </div>
       </section>
