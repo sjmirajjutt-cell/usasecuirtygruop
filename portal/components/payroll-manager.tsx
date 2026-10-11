@@ -5,6 +5,7 @@ import type { Attendance, Profile } from '@/lib/supabase/database.types'
 
 type Period = 'daily' | 'weekly' | 'monthly'
 type PayrollRow = { employee: Profile; shifts: Attendance[]; hours: number; amount: number }
+type PayrollPayment = { id: string; employee_id: string; period_start: string; period_end: string; total_hours: number; gross_amount: number; status: 'paid' | 'unpaid'; paid_at: string }
 
 const dateValue = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 
@@ -21,9 +22,10 @@ function getPeriodRange(period: Period, referenceDate = new Date()) {
   return { start: dateValue(start), end: dateValue(end) }
 }
 
-export function PayrollManager({ employees, attendance }: { employees: Profile[]; attendance: Attendance[] }) {
+export function PayrollManager({ employees, attendance, payments: initialPayments }: { employees: Profile[]; attendance: Attendance[]; payments: PayrollPayment[] }) {
   const [period, setPeriod] = useState<Period>('weekly')
   const [shiftRecords, setShiftRecords] = useState(attendance)
+  const [payments, setPayments] = useState(initialPayments)
   const [savingEmployeeId, setSavingEmployeeId] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -52,9 +54,11 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
   const totalPayout = rows.reduce((total, row) => total + row.amount, 0)
 
   async function updatePaymentStatus(row: PayrollRow) {
-    const isPaid = row.shifts.length > 0 && row.shifts.every(shift => shift.is_paid)
+    const periodPayments = payments.filter(payment => payment.employee_id === row.employee.id && payment.period_start === range.start && payment.period_end === range.end)
+    const isPaid = row.shifts.length > 0
+      ? row.shifts.every(shift => shift.is_paid)
+      : periodPayments.some(payment => payment.status === 'paid')
     const unpaidShifts = row.shifts.filter(shift => !shift.is_paid)
-    if (!row.shifts.length) return
     setSavingEmployeeId(row.employee.id)
     setMessage('')
     setError('')
@@ -82,6 +86,14 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
       setShiftRecords(current => current.map(shift => updatedIds.has(shift.id)
         ? { ...shift, is_paid: !isPaid, paid_at: isPaid ? null : updatedAt }
         : shift))
+      if (isPaid) {
+        setPayments(current => current.map(payment => periodPayments.some(periodPayment => periodPayment.id === payment.id)
+          ? { ...payment, status: 'unpaid' }
+          : payment))
+      } else {
+        const createdPayment = result.payment as PayrollPayment
+        setPayments(current => [...current, createdPayment])
+      }
       setMessage(`${row.employee.full_name} marked ${isPaid ? 'unpaid' : 'paid'}.`)
     } catch (statusError) {
       setError(statusError instanceof Error ? statusError.message : 'Unable to update payroll status.')
@@ -152,9 +164,10 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map(row => {
+              const rowPayments = payments.filter(payment => payment.employee_id === row.employee.id && payment.period_start === range.start && payment.period_end === range.end)
               const paidCount = row.shifts.filter(shift => shift.is_paid).length
-              const isPaid = row.shifts.length > 0 && paidCount === row.shifts.length
-              const isPartiallyPaid = paidCount > 0 && !isPaid
+              const isPaid = row.shifts.length > 0 ? paidCount === row.shifts.length : rowPayments.some(payment => payment.status === 'paid')
+              const isPartiallyPaid = row.shifts.length > 0 && paidCount > 0 && !isPaid
               return (
               <tr key={row.employee.id}>
                 <td className="px-6 py-4 font-semibold text-[#12263f]">
@@ -169,9 +182,9 @@ export function PayrollManager({ employees, attendance }: { employees: Profile[]
                     <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${isPaid ? 'bg-emerald-50 text-emerald-700' : isPartiallyPaid ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
                       {isPaid ? 'Paid' : isPartiallyPaid ? 'Partially paid' : 'Unpaid'}
                     </span>
-                    {row.shifts.length > 0 && <button type="button" disabled={savingEmployeeId !== null} onClick={() => updatePaymentStatus(row)} className={`rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${isPaid ? 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'bg-[#12263f] text-white hover:bg-[#1b3c5e]'}`}>
+                    <button type="button" disabled={savingEmployeeId !== null} onClick={() => updatePaymentStatus(row)} className={`rounded-lg px-3 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50 ${isPaid ? 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50' : 'bg-[#12263f] text-white hover:bg-[#1b3c5e]'}`}>
                       {savingEmployeeId === row.employee.id ? 'Updating…' : isPaid ? 'Mark unpaid' : isPartiallyPaid ? 'Mark remaining paid' : 'Mark as paid'}
-                    </button>}
+                    </button>
                   </div>
                 </td>
               </tr>

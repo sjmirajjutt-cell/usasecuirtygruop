@@ -34,15 +34,20 @@ export async function POST(request: Request) {
   const grossAmount = Number(body.grossAmount)
   const attendanceIds = Array.isArray(body.attendanceIds) ? body.attendanceIds.map(String).filter(Boolean) : []
   if (!employeeId || !periodStart || !periodEnd || !Number.isFinite(totalHours) || !Number.isFinite(grossAmount)) return NextResponse.json({ error: 'Employee, payroll period, hours, and amount are required.' }, { status: 400 })
-  if (totalHours <= 0 || grossAmount <= 0) return NextResponse.json({ error: 'Cannot mark payroll paid because this period has no payable hours.' }, { status: 400 })
-  if (attendanceIds.length === 0) return NextResponse.json({ error: 'No unpaid attendance records were found for this payroll.' }, { status: 400 })
+  if (totalHours < 0 || grossAmount < 0 || (attendanceIds.length === 0 && (totalHours !== 0 || grossAmount !== 0)) || (attendanceIds.length > 0 && totalHours === 0)) {
+    return NextResponse.json({ error: 'Payroll amounts must match the unpaid shift records.' }, { status: 400 })
+  }
   const admin = createAdminClient()
   const { data, error } = await admin.from('payroll_payments').insert({ employee_id: employeeId, period_start: periodStart, period_end: periodEnd, total_hours: totalHours, gross_amount: grossAmount }).select('*').single()
   if (error) return NextResponse.json({ error: error.code === '23505' ? 'This employee payroll period is already marked as paid.' : error.message }, { status: 400 })
 
   const paidAt = new Date().toISOString()
-  const { error: activeAttendanceError } = await admin.from('attendance').update({ paid_at: paidAt, is_paid: false }).eq('employee_id', employeeId).eq('is_paid', false).is('check_out', null).in('id', attendanceIds)
-  const { error: completedAttendanceError } = await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).not('check_out', 'is', null).in('id', attendanceIds)
+  const { error: activeAttendanceError } = attendanceIds.length
+    ? await admin.from('attendance').update({ paid_at: paidAt, is_paid: false }).eq('employee_id', employeeId).eq('is_paid', false).is('check_out', null).in('id', attendanceIds)
+    : { error: null }
+  const { error: completedAttendanceError } = attendanceIds.length
+    ? await admin.from('attendance').update({ is_paid: true }).eq('employee_id', employeeId).eq('is_paid', false).not('check_out', 'is', null).in('id', attendanceIds)
+    : { error: null }
   if (activeAttendanceError || completedAttendanceError) {
     await admin.from('payroll_payments').delete().eq('id', data.id)
     return NextResponse.json({ error: activeAttendanceError?.message ?? completedAttendanceError?.message }, { status: 400 })
@@ -80,6 +85,13 @@ export async function PATCH(request: Request) {
     .neq('attendance_status', 'absent')
     .gt('total_hours', 0)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const { error: paymentError } = await admin.from('payroll_payments')
+    .update({ status: 'unpaid' })
+    .eq('employee_id', employeeId)
+    .eq('period_start', periodStart)
+    .eq('period_end', periodEnd)
+  if (paymentError) return NextResponse.json({ error: paymentError.message }, { status: 500 })
 
   return NextResponse.json({ success: true })
 }
